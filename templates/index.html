@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+    <title>Энергопотребление смартфона</title>
+    <link rel="stylesheet" href="/static/styles/mainpage_globals.css" />
+    <link rel="stylesheet" href="/static/styles/mainpage.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div class="div">
+        <div class="frame" aria-hidden="true"></div>
+        
+        <!-- Добавляем контейнер для карточек -->
+        <div class="cards-container">
+          {{ range $i, $u := .usecases }}
+          <a href="/usecase/{{ $u.ID }}" style="text-decoration:none; color:inherit;">
+            <section class="{{ if eq $i 0 }}view{{ else if eq $i 1 }}view-2{{ else if eq $i 2 }}reels{{ else if eq $i 3 }}view-3{{ else if eq $i 4 }}view-4{{ else if eq $i 5 }}view-5{{ else if eq $i 6 }}view-6{{ else }}view-7{{ end }}" role="region" aria-label="Карточка">
+              <div class="overlap">
+                <div class="text-wrapper">{{ $u.Title }}</div>
+                <div class="frame-2" role="img" aria-label="Иконка">
+                  <img class="icon" src="{{ $u.Adres }}" alt="{{ $u.Title }}">
+                </div>
+              </div>
+            </section>
+          </a>
+          {{ end }}
+        </div>
+        
+        <!-- Остальной код остается без изменений -->
+        <form class="frame-11" role="search" aria-label="Поиск приложений" action="/hello" method="GET">
+          <label for="search-input" class="text-wrapper-5"></label>
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="поиск"
+            aria-label=""
+            name="query"
+            value="{{ .query }}"
+          />
+          <button type="submit" class="material-symbols" aria-label="найти">
+            <img class="vector" src="http://127.0.0.1:9000/lab1/search_icon.webp"/>
+          </button>
+        </form>
+        
+        <header class="frame-wrapper">
+          <nav class="div-wrapper">
+            <button class="text-wrapper-6" type="button">домой</button>
+          </nav>
+        </header>
+        
+        <a href="/message" style="text-decoration:none; color:inherit;">
+          <aside class="overlap-2" role="complementary" aria-labelledby="energy-title">
+            <div class="mage-electricity-wrapper">
+              <div class="mage-electricity" role="img" aria-label="Электричество">
+                <img class="img" src="http://127.0.0.1:9000/lab1/electricity.png"/>
+              </div>
+            </div>
+            <h3 class="text-wrapper-7" id="energy-title">потребляемая энергия</h3>
+          </aside>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

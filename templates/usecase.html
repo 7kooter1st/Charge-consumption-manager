@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+    <title>Информация о варианте использования</title>
+    <link rel="stylesheet" href="/static/styles/usecase_style.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div class="div">
+        <header class="frame">
+          <nav class="div-wrapper">
+            <a href="/hello" style="text-decoration:none; color:inherit;">
+              <div class="text-wrapper">домой</div>
+            </a>
+          </nav>
+        </header>
+        <h1 class="text-wrapper-2">{{ .usecase.Title }}</h1>
+        <figure class="overlap-group" role="group" aria-label="Изображение варианта использования">
+          <div class="frame-wrapper">
+            <div class="frame-2">
+              <img src="{{ .usecase.Adres }}" alt="{{ .usecase.Title }}" style="width:100%; height:100%; object-fit:cover; border-radius: 20px 20px 0px 0px;"/>
+            </div>
+          </div>
+          <figcaption class="p">{{ .usecase.Exprnditure }} мА/ч</figcaption>
+        </figure>
+      </div>
+    </main>
+  </body>
+</html>
