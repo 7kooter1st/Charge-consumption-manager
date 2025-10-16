@@ -3,28 +3,47 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta charset="utf-8" />
-    <title>Информация о варианте использования</title>
-    <link rel="stylesheet" href="/static/styles/usecase_style.css" />
+    <title>{{ .useCase.Title }} - Сценарий использования</title>
+    <link rel="stylesheet" href="/static/styles/usecase.css" />
+    <link rel="stylesheet" href="/static/styles/usecase_globals.css" />
   </head>
   <body>
     <main class="screen">
       <div class="div">
         <header class="frame">
           <nav class="div-wrapper">
-            <a href="/hello" style="text-decoration:none; color:inherit;">
+            <a href="/usecases" style="text-decoration:none; color:inherit;">
               <div class="text-wrapper">домой</div>
             </a>
           </nav>
         </header>
-        <h1 class="text-wrapper-2">{{ .usecase.Title }}</h1>
-        <figure class="overlap-group" role="group" aria-label="Изображение варианта использования">
+        
+        <h1 class="text-wrapper-2">{{ .useCase.Title }}</h1>
+        
+        <figure class="overlap-group" role="group" aria-label="Изображение сценария использования">
           <div class="frame-wrapper">
             <div class="frame-2">
-              <img src="{{ .usecase.Adres }}" alt="{{ .usecase.Title }}" style="width:100%; height:100%; object-fit:cover; border-radius: 20px 20px 0px 0px;"/>
+              <img src="{{ .useCase.ImageURL }}" alt="{{ .useCase.Title }}" style="width:100%; height:100%; object-fit:cover; border-radius: 20px 20px 0px 0px;"/>
             </div>
           </div>
-          <figcaption class="p">{{ .usecase.Exprnditure }} мА/ч</figcaption>
+          <figcaption class="p">{{ .useCase.PowerConsumption }} мА/ч</figcaption>
         </figure>
+        
+        {{ if .useCase.Description }}
+        <div class="description">
+          <h3>Описание:</h3>
+          <p>{{ .useCase.Description }}</p>
+        </div>
+        {{ end }}
+        
+        <!-- Форма для добавления в заявку -->
+        <form action="/consumption/add" method="POST" class="add-to-consumption-form">
+          <h3>Добавить в заявку</h3>
+          <input type="hidden" name="useCaseID" value="{{ .useCase.ID_UseCase }}">
+          <label for="duration">Время использования (минуты):</label>
+          <input type="number" id="duration" name="duration" min="1" max="1440" required>
+          <button type="submit">Добавить в заявку</button>
+        </form>
       </div>
     </main>
   </body>

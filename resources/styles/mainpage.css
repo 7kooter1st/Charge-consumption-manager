@@ -41,7 +41,7 @@
 }
 
 .screen .overlap {
-  height: 249px;
+  height: 220px;
   top: 0;
   left: 0;
   position: absolute;
@@ -52,7 +52,7 @@
   position: absolute;
   width: 240px;
   height: 50px;
-  top: 199px;
+  top: 170px;
   left: 0;
   font-family: "Montserrat-Regular", Helvetica;
   font-weight: 400;
@@ -66,7 +66,7 @@
 .screen .frame-2 {
   position: absolute;
   width: 240px;
-  height: 200px;
+  height: 170px;
   top: 0;
   left: 0;
   border-radius: 20px 20px 0px 0px;
@@ -434,7 +434,6 @@
   letter-spacing: 0;
   line-height: normal;
 }
-/* Original CSS code should be injected here */
 
 /* Additional styles for semantic elements and accessibility */
 .search-input {
@@ -553,4 +552,74 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.product-card {
+  position: relative;
+  width: 240px;
+  height: 300px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin: 20px;
+}
+
+.button-container {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  right: auto;
+}
+
+.minus-button, .plus-button {
+  color: white;
+  width: 60px;
+  height: 40px;
+  background: #58658c;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 18px;
+  user-select: none;
+  transition: all 0.2s ease;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.minus-button {
+  border-radius: 5px 0px 0px 5px;
+}
+
+.plus-button {
+  border-radius: 0px 5px 5px 0px;
+}
+
+.minus-button:hover, .plus-button:hover {
+  background: #9099b5;
+  transform: scale(1.1);
+}
+
+.counter {
+  color: white;
+  width: 80px;
+  height: 40px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  padding: 0;
+  background: #58658c;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  flex-shrink: 0;
 }

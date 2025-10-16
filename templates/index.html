@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta charset="utf-8" />
-    <title>Энергопотребление смартфона</title>
+    <title>Сценарии использования смартфона</title>
     <link rel="stylesheet" href="/static/styles/mainpage_globals.css" />
     <link rel="stylesheet" href="/static/styles/mainpage.css" />
   </head>
@@ -11,25 +11,54 @@
     <main class="screen">
       <div class="div">
         <div class="frame" aria-hidden="true"></div>
-        
-        <!-- Добавляем контейнер для карточек -->
+
         <div class="cards-container">
-          {{ range $i, $u := .usecases }}
-          <a href="/usecase/{{ $u.ID }}" style="text-decoration:none; color:inherit;">
-            <section class="{{ if eq $i 0 }}view{{ else if eq $i 1 }}view-2{{ else if eq $i 2 }}reels{{ else if eq $i 3 }}view-3{{ else if eq $i 4 }}view-4{{ else if eq $i 5 }}view-5{{ else if eq $i 6 }}view-6{{ else }}view-7{{ end }}" role="region" aria-label="Карточка">
+          {{ range $i, $uc := .UseCases }}
+          <section
+            class="{{ if eq $i 0 }}view{{ else if eq $i 1 }}view-2{{ else if eq $i 2 }}reels{{ else if eq $i 3 }}view-3{{ else if eq $i 4 }}view-4{{ else if eq $i 5 }}view-5{{ else if eq $i 6 }}view-6{{ else }}view-7{{ end }}"
+            role="region"
+            aria-label="Карточка"
+          >
+            <a href="/usecase/{{ $uc.ID}}" style="text-decoration:none; color:inherit;">
               <div class="overlap">
-                <div class="text-wrapper">{{ $u.Title }}</div>
-                <div class="frame-2" role="img" aria-label="Иконка">
-                  <img class="icon" src="{{ $u.Adres }}" alt="{{ $u.Title }}">
-                </div>
+                <div class="text-wrapper">{{ $uc.Title }}</div>
+                <div class="frame-2" role="img" aria-label="Иконка"></div>
+                <img class="icon" src="{{ $uc.ImageURL }}" alt="{{ $uc.Title }}" />
               </div>
-            </section>
-          </a>
+            </a>
+
+            <div class="button-container">
+              <!-- Форма для кнопки "-" (уменьшение/удаление) -->
+              <!-- Убедитесь, что у вас есть обработчик для POST /consumption/remove-usecase -->
+              <form action="/consumption/remove-duration" method="POST" style="display: inline;">
+                <input type="hidden" name="useCaseID" value="{{ $uc.ID }}" />
+                <button type="submit" class="minus-button">-</button>
+              </form>
+
+              <div class="counter">
+                {{ $currentDuration := 0 }}
+                {{ if $.consumption }}
+                  {{ range $.consumption.UseCases }}
+                    {{ if eq .UseCase.ID $uc.ID }}
+                        {{ $currentDuration = .Duration }}
+                    {{ end }}
+                  {{ end }}
+                {{ end }}
+                {{ $currentDuration }}
+              </div>
+
+              <!-- Форма для кнопки "+" (добавление/увеличение) -->
+              <form action="/consumption/add-duration" method="POST" style="display: inline;">
+                <input type="hidden" name="useCaseID" value="{{ $uc.ID }}" />
+                <input type="hidden" name="duration" value="15" />
+                <button type="submit" class="plus-button">+</button>
+              </form>
+            </div>
+          </section>
           {{ end }}
         </div>
-        
-        <!-- Остальной код остается без изменений -->
-        <form class="frame-11" role="search" aria-label="Поиск приложений" action="/hello" method="GET">
+
+        <form class="frame-11" role="search" aria-label="Поиск приложений" action="/usecases" method="GET">
           <label for="search-input" class="text-wrapper-5"></label>
           <input
             type="text"
@@ -41,27 +70,28 @@
             value="{{ .query }}"
           />
           <button type="submit" class="material-symbols" aria-label="найти">
-            <img class="vector" src="http://127.0.0.1:9000/lab1/search_icon.webp"/>
+            <img class="vector" src="http://127.0.0.1:9000/lab1/search_icon.webp" />
           </button>
         </form>
-        
+
         <header class="frame-wrapper">
           <nav class="div-wrapper">
             <button class="text-wrapper-6" type="button">домой</button>
           </nav>
         </header>
-        
-        <a href="/message" style="text-decoration:none; color:inherit;">
+
+        <a href="/consumption" style="text-decoration:none; color:inherit;">
           <aside class="overlap-2" role="complementary" aria-labelledby="energy-title">
             <div class="mage-electricity-wrapper">
               <div class="mage-electricity" role="img" aria-label="Электричество">
-                <img class="img" src="http://127.0.0.1:9000/lab1/electricity.png"/>
+                <img class="img" src="http://127.0.0.1:9000/lab1/electricity.png" />
               </div>
             </div>
-            <h3 class="text-wrapper-7" id="energy-title">потребляемая энергия</h3>
+            <h3 class="text-wrapper-7" id="energy-title">моя заявка</h3>
           </aside>
         </a>
       </div>
     </main>
   </body>
 </html>
+

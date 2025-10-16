@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+    <title>Ошибка</title>
+    <link rel="stylesheet" href="/static/styles/mainpage_globals.css" />
+    <link rel="stylesheet" href="/static/styles/mainpage.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div class="div">
+        <header class="frame">
+          <nav class="div-wrapper">
+            <a href="/usecases" style="text-decoration:none; color:inherit;">
+              <div class="text-wrapper">домой</div>
+            </a>
+          </nav>
+        </header>
+        <h1 class="text-wrapper-2">Произошла ошибка</h1>
+        <p>{{ .error }}</p>
+      </div>
+    </main>
+  </body>
+  </html>
+
+

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+    <title>Моя заявка</title>
+    <link rel="stylesheet" href="/static/styles/consumption_globals.css" />
+    <link rel="stylesheet" href="/static/styles/consumption.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <div class="div">
+        <header class="frame">
+          <nav class="div-wrapper">
+            <a class="text-wrapper" href="/usecases" aria-label="Перейти на главную страницу">домой</a>
+          </nav>
+        </header>
+
+        {{ if .consumption }}
+        <!-- Секция с деталями заявки -->
+        <section class="overlap">
+          <article class="frame-2">
+            <div class="frame-3">
+              {{ if .consumption.TotalPower }}
+              <div class="text-wrapper-2">Общее потребление: {{ .consumption.TotalPower }} мА</div>
+              {{ else }}
+              <div class="text-wrapper-2">Расчет потребления...</div>
+              {{ end }}
+            </div>
+            <h2 class="text-wrapper-3">Моя заявка - {{ .consumption.Status }}</h2>
+          </article>
+          <div class="frame-wrapper">
+            <div class="frame-4" role="img" aria-label="Иконка заявки">
+              <img src="/static/images/consumption-icon.png" alt="Заявка">
+            </div>
+          </div>
+        </section>
+
+        <!-- Сценарии использования в заявке -->
+        <h3 style="margin: 20px 0 10px 0;">Сценарии использования:</h3>
+        {{ if .consumption.UseCases }}
+          {{ range .consumption.UseCases }}
+          <section class="overlap">
+            <article class="frame-2">
+              <div class="frame-3">
+                <div class="text-wrapper-2">
+                  Потребление: {{ .UseCase.PowerConsumption }} мА в течение {{ .Duration }} минут
+                </div>
+              </div>
+              <h2 class="text-wrapper-3">{{ .UseCase.Title }}</h2>
+              <p style="margin: 10px 0; color: #666;">{{ .UseCase.Description }}</p>
+              {{ if .IsMain }}
+              <span style="background: #ffd700; padding: 2px 8px; border-radius: 10px; font-size: 12px;">Главный</span>
+              {{ end }}
+            </article>
+            <div class="frame-wrapper">
+              <div class="frame-4" role="img" aria-label="Иконка {{ .UseCase.Title }}">
+                {{ if .UseCase.ImageURL }}
+                <img src="{{ .UseCase.ImageURL }}" alt="{{ .UseCase.Title }}">
+                {{ else }}
+                <img src="/static/images/default-usecase.png" alt="{{ .UseCase.Title }}">
+                {{ end }}
+              </div>
+            </div>
+          </section>
+          {{ end }}
+
+          <!-- Кнопка удаления заявки -->
+          <section class="overlap">
+            <article class="frame-2">
+              <form action="/consumption/delete" method="POST" class="delete-form">
+                <button type="submit" onclick="return confirm('Вы уверены, что хотите удалить заявку?')">
+                  Удалить заявку
+                </button>
+              </form>
+            </article>
+          </section>
+
+        {{ else }}
+          <section class="overlap">
+            <article class="frame-2">
+              <p>В заявке пока нет сценариев использования</p>
+            </article>
+          </section>
+        {{ end }}
+
+        {{ else }}
+        <section class="overlap">
+          <article class="frame-2">
+            <h2 class="text-wrapper-3">У вас пока нет активной заявки</h2>
+          </article>
+          <div class="frame-wrapper">
+            <div class="frame-4" role="img" aria-label="Иконка создания заявки">
+              <img src="/static/images/create-icon.png" alt="Создать заявку">
+            </div>
+          </div>
+        </section>
+        {{ end }}
+      </div>
+    </main>
+  </body>
+</html>
