@@ -20,16 +20,15 @@ func NewHandler(r *repository.Repository) *Handler {
 // RegisterHandler Функция, в которой мы отдельно регистрируем маршруты, чтобы не писать все в одном месте
 func (h *Handler) RegisterHandler(router *gin.Engine) {
 	// GET методы
+	router.GET("/", h.GetUseCases)                      // Главная страница со сценариями
 	router.GET("/usecases", h.GetUseCases)              // Список сценариев использования
 	router.GET("/usecase/:id", h.GetUseCaseById)        // Детали сценария использования
 	router.GET("/consumption", h.GetCurrentConsumption) // Текущая заявка пользователя
 
 	// POST методы
-
 	router.POST("/consumption/add-duration", h.AddUseCaseToConsumption)
 	router.POST("/consumption/remove-duration", h.DeleteUseCaseFromConsumption)
-	// router.POST("/consumption/add", h.AddUseCaseToConsumption) // Добавить сценарий в заявку
-	router.POST("/consumption/delete", h.DeleteConsumption) // Удалить заявку
+	router.POST("/consumption/delete", h.DeleteConsumption)
 }
 
 // RegisterStatic То же самое, что и с маршрутами, регистрируем статику

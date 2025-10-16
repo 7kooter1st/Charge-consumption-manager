@@ -33,7 +33,7 @@ func (h *Handler) GetCurrentConsumption(ctx *gin.Context) {
 	consumption, err := h.Repository.GetCurrentConsumption(user.ID)
 	if err != nil {
 		// Если заявки нет, показываем страницу с пустой заявкой
-		ctx.HTML(http.StatusOK, "consumption.html", gin.H{
+		ctx.HTML(http.StatusOK, "index.html", gin.H{
 			"consumption": nil,
 			"user":        user,
 			"UseCases":    useCases,
@@ -59,20 +59,23 @@ func (h *Handler) GetCurrentConsumption(ctx *gin.Context) {
 }
 
 // AddUseCaseToConsumption добавляет сценарий использования в заявку (обработка формы)
+// AddUseCaseToConsumption добавляет сценарий использования в заявку
 func (h *Handler) AddUseCaseToConsumption(ctx *gin.Context) {
+	// Получаем пользователя
 	user, err := h.Repository.GetOrCreateDefaultUser()
 	if err != nil {
-		logrus.Error(err)
-		ctx.Redirect(http.StatusSeeOther, "/usecases") // Редирект в случае ошибки пользователя
+		logrus.Error("Ошибка получения пользователя:", err)
+		ctx.Redirect(http.StatusSeeOther, "/usecases")
 		return
 	}
 
 	// Получаем параметры из формы
 	useCaseIDStr := ctx.PostForm("useCaseID")
-	durationStr := ctx.PostForm("duration") // должно быть 15 из формы
+	durationStr := ctx.PostForm("duration")
 
 	useCaseID, err := strconv.ParseUint(useCaseIDStr, 10, 32)
 	if err != nil {
+		logrus.Error("Ошибка парсинга useCaseID:", err)
 		ctx.Redirect(http.StatusSeeOther, "/usecases")
 		return
 	}
@@ -82,24 +85,18 @@ func (h *Handler) AddUseCaseToConsumption(ctx *gin.Context) {
 		duration = 15 // значение по умолчанию
 	}
 
-	///////////////////////////////////////////////////////
-	// Получаем или создаем текущую заявку
-	consumption, err := h.Repository.GetCurrentConsumption(user.ID)
+	// Упрощенная логика: получаем или создаем заявку
+	consumption, err := h.Repository.GetOrCreateCurrentConsumption(user.ID)
 	if err != nil {
-		// Создаем новую заявку, если не найдена
-		consumption, err = h.Repository.CreateConsumption(user.ID)
-		if err != nil {
-			logrus.Error(err)
-			ctx.Redirect(http.StatusSeeOther, "/usecases")
-			return
-		}
+		logrus.Error("Ошибка получения/создания заявки:", err)
+		ctx.Redirect(http.StatusSeeOther, "/usecases")
+		return
 	}
-	/////////////////////////////////////////////////////////
 
-	// Проверяем, существует ли сценарий, и обновляем или добавляем его
+	// Добавляем или обновляем сценарий в заявке
 	exists, err := h.Repository.CheckIfUseCaseInConsumption(consumption.ID, uint(useCaseID))
 	if err != nil {
-		logrus.Error(err)
+		logrus.Error("Ошибка проверки сценария:", err)
 		ctx.Redirect(http.StatusSeeOther, "/usecases")
 		return
 	}
@@ -111,15 +108,22 @@ func (h *Handler) AddUseCaseToConsumption(ctx *gin.Context) {
 	}
 
 	if err != nil {
-		logrus.Error(err)
-		// Не паникуем, просто редирект, чтобы не показывать ошибку
+		logrus.Error("Ошибка добавления сценария:", err)
+		ctx.Redirect(http.StatusSeeOther, "/usecases")
+		return
 	}
 
-	// Пересчет и обновление общей мощности
-	totalPower, _ := h.Repository.CalculateTotalPower(consumption.ID)
-	h.Repository.UpdateConsumptionTotalPower(consumption.ID, totalPower)
+	// Пересчет общей мощности
+	totalPower, err := h.Repository.CalculateTotalPower(consumption.ID)
+	if err != nil {
+		logrus.Error("Ошибка расчета мощности:", err)
+	} else {
+		err = h.Repository.UpdateConsumptionTotalPower(consumption.ID, totalPower)
+		if err != nil {
+			logrus.Error("Ошибка обновления мощности:", err)
+		}
+	}
 
-	// *** Ключевое изменение: Редирект обратно на главную страницу ***
 	ctx.Redirect(http.StatusSeeOther, "/usecases")
 }
 

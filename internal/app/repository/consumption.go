@@ -68,6 +68,31 @@ func (r *Repository) GetConsumptionWithUseCases(consumptionID uint) (ds.Consumpt
 	return consumption, err
 }
 
+// GetOrCreateCurrentConsumption получает или создает текущую заявку
+func (r *Repository) GetOrCreateCurrentConsumption(userID uint) (ds.Consumption, error) {
+	var consumption ds.Consumption
+
+	// Пытаемся найти существующую заявку
+	err := r.db.Where("user_id = ? AND status = ?", userID, "черновик").First(&consumption).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Создаем новую заявку
+			consumption = ds.Consumption{
+				UserID: userID,
+				Status: "черновик",
+			}
+			err = r.db.Create(&consumption).Error
+			if err != nil {
+				return ds.Consumption{}, err
+			}
+			return consumption, nil
+		}
+		return ds.Consumption{}, err
+	}
+
+	return consumption, nil
+}
+
 func (r *Repository) AddUseCaseToConsumption(consumptionID, useCaseID, duration uint) error {
 	uccp := ds.UCCP{
 		ConsumptionID: consumptionID,
