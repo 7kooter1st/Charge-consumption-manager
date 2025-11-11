@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"LAB3/internal/app/dto"
+	dto "LAB3/internal/app/DTO"
 	"net/http"
 	"strconv"
 
@@ -15,7 +15,7 @@ func (h *Handler) registerUser(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.AddNewUser(input)
+	user, err := h.Service.AddNewUser(input)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -31,7 +31,7 @@ func (h *Handler) getUserData(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.GetUserData(uint(userId))
+	user, err := h.Service.GetUserData(uint(userId))
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -53,7 +53,7 @@ func (h *Handler) changeUserData(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.ChangeUserData(uint(userId), input)
+	user, err := h.Service.ChangeUserData(uint(userId), input)
 	if err != nil {
 		h.handleError(c, err)
 		return

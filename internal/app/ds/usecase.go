@@ -17,8 +17,8 @@ import (
 type UseCase struct {
 	gorm.Model
 	ID          uint   `gorm:"primaryKey"`
-	Name        string `gorm:"type:varchar(255);not null"`
-	URL         string `gorm:"type:varchar(500);not null"`
+	Name        string `gorm:"type:varchar(255)"`
+	URL         string `gorm:"type:varchar(500)"`
 	Description string `gorm:"type:text;default:'-'"`
 	Consumption uint   `gorm:"default:0"`
 	IsDelete    bool   `gorm:"default:false"`

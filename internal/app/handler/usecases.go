@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"LAB3/internal/app/dto"
+	dto "LAB3/internal/app/DTO"
 	"net/http"
 	"strconv"
 
@@ -12,7 +12,7 @@ func (h *Handler) getUseCases(c *gin.Context) {
 	startValue, _ := strconv.ParseUint(c.Query("start_value"), 10, 32)
 	endValue, _ := strconv.ParseUint(c.Query("end_value"), 10, 32)
 
-	useCases, err := h.service.GetUseCases(uint(startValue), uint(endValue))
+	useCases, err := h.Service.GetUseCases(uint(startValue), uint(endValue))
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -28,7 +28,7 @@ func (h *Handler) createUseCase(c *gin.Context) {
 		return
 	}
 
-	useCase, err := h.service.AddUseCase(input)
+	useCase, err := h.Service.AddUseCase(input)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -44,7 +44,7 @@ func (h *Handler) getUseCaseByID(c *gin.Context) {
 		return
 	}
 
-	useCase, err := h.service.GetUseCase(uint(id))
+	useCase, err := h.Service.GetUseCase(uint(id))
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -66,7 +66,7 @@ func (h *Handler) updateUseCase(c *gin.Context) {
 		return
 	}
 
-	updatedUseCase, err := h.service.UpdateUseCase(uint(id), input)
+	updatedUseCase, err := h.Service.UpdateUseCase(uint(id), input)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -82,7 +82,7 @@ func (h *Handler) deleteUseCase(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteUseCase(uint(id)); err != nil {
+	if err := h.Service.DeleteUseCase(uint(id)); err != nil {
 		h.handleError(c, err)
 		return
 	}

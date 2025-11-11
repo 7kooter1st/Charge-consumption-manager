@@ -1,9 +1,9 @@
 package service
 
 import (
+	dto "LAB3/internal/app/DTO"
+	"LAB3/internal/app/ds"
 	"errors"
-	dto "lab/internal/app/DTO"
-	"lab/internal/app/ds"
 
 	"gorm.io/gorm"
 )

@@ -1,9 +1,9 @@
 package service
 
 import (
+	dto "LAB3/internal/app/DTO"
+	"LAB3/internal/app/ds"
 	"errors"
-	dto "lab/internal/app/DTO"
-	"lab/internal/app/ds"
 	"math"
 	"time"
 
@@ -38,7 +38,9 @@ func (s *Service) GetFilteredConsumptions(
 	var consumptionsResponse []dto.ConsumptionsResponse
 	for _, consumption := range consumptions {
 		moderatorLogin := ""
-		if consumption.Moderator != 0 {
+		// --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+		// Проверяем указатель на ID, а не саму структуру. Это корректно.
+		if consumption.ModeratorID != nil {
 			moderatorLogin = consumption.Moderator.Login
 		}
 
@@ -48,7 +50,7 @@ func (s *Service) GetFilteredConsumptions(
 			Creator:     consumption.User.Login,
 			CreatedAt:   consumption.CreatedAt,
 			UpdatedAt:   consumption.UpdatedAt,
-			ModeratedAt: consumption.ModeratedAt,
+			ModeratedAt: consumption.ModeratedAt, // Убедитесь, что это поле есть в DTO и модели
 			Moderator:   moderatorLogin,
 			TotalPower:  consumption.TotalPower,
 			UserID:      consumption.UserID,
@@ -75,12 +77,45 @@ func (s *Service) GetOneConsumption(consumptionId uint, userId uint) (dto.OneCon
 }
 
 // ValidateConsumptionResponse преобразует Consumption в DTO, исключая удаленные сценарии
+// func (s *Service) ValidateConsumptionResponse(consumption *ds.Consumption) dto.OneConsumptionResponse {
+// 	var useCasesDTO []dto.UseCaseFromConsumptionResponse
+
+// 	if consumption.Usecases != nil {
+// 		for _, uc := range consumption.Usecases {
+// 			if uc.UseCase != nil && !uc.UseCase.IsDelete {
+// 				useCasesDTO = append(useCasesDTO, dto.UseCaseFromConsumptionResponse{
+// 					ID:          uc.UseCase.ID,
+// 					Name:        uc.UseCase.Name,
+// 					Description: uc.UseCase.Description,
+// 					Consumption: uc.UseCase.Consumption,
+// 					Image:       uc.UseCase.URL,
+// 					IsDelete:    uc.UseCase.IsDelete,
+// 					Duration:    uc.Duration,
+// 				})
+// 			}
+// 		}
+// 	}
+
+// 	response := dto.OneConsumptionResponse{
+// 		ID:         consumption.ID,
+// 		TotalPower: consumption.TotalPower,
+// 		Status:     consumption.Status,
+// 		UserID:     consumption.UserID,
+// 		UseCases:   useCasesDTO,
+// 	}
+// 	return response
+// }
+
 func (s *Service) ValidateConsumptionResponse(consumption *ds.Consumption) dto.OneConsumptionResponse {
 	var useCasesDTO []dto.UseCaseFromConsumptionResponse
 
+	// Проверяем, что срез Usecases в принципе не nil (хотя GORM обычно инициализирует пустой срез)
 	if consumption.Usecases != nil {
 		for _, uc := range consumption.Usecases {
-			if uc.UseCase != nil && !uc.UseCase.IsDelete {
+			// --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+			// Правильная проверка: ID не равен 0 (значит, GORM загрузил данные)
+			// и сценарий не помечен как удаленный.
+			if uc.UseCase.ID != 0 && !uc.UseCase.IsDelete {
 				useCasesDTO = append(useCasesDTO, dto.UseCaseFromConsumptionResponse{
 					ID:          uc.UseCase.ID,
 					Name:        uc.UseCase.Name,
@@ -88,7 +123,8 @@ func (s *Service) ValidateConsumptionResponse(consumption *ds.Consumption) dto.O
 					Consumption: uc.UseCase.Consumption,
 					Image:       uc.UseCase.URL,
 					IsDelete:    uc.UseCase.IsDelete,
-					Duration:    uc.Duration,
+					// Duration берем из самой связи `uc`, а не из UseCase
+					Duration: uc.Duration,
 				})
 			}
 		}
@@ -270,11 +306,10 @@ func (s *Service) CreateNewConsumption(userId uint) (dto.NumberOfUseCasesRespons
 	}, nil
 }
 
-// CalculateTotalConsumption вычисляет общее потребление энергии на основе сценариев
-func CalculateTotalConsumption(useCases []ds.usecase_consumption) uint {
+func CalculateTotalConsumption(useCases []ds.Usecase_consumption) uint {
 	total := uint(0)
 	for _, uc := range useCases {
-		if uc.UseCase != nil {
+		if uc.UseCase.ID != 0 {
 			total += uc.UseCase.Consumption * uc.Duration
 		}
 	}

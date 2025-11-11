@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"LAB3/internal/app/Service"
+	"LAB3/internal/app/service"
 	"errors"
 	"net/http"
 	"strconv"
@@ -10,7 +10,7 @@ import (
 )
 
 type Handler struct {
-	Service *Service.Service
+	Service *service.Service
 }
 
 var STATUS_CODES = map[int]string{
@@ -20,7 +20,7 @@ var STATUS_CODES = map[int]string{
 	500: "Internal Server Error",
 }
 
-func NewHandler(s *Service.Service) *Handler {
+func NewHandler(s *service.Service) *Handler {
 	return &Handler{
 		Service: s,
 	}
@@ -77,15 +77,15 @@ func (h *Handler) InitRoutes() *gin.Engine {
 }
 
 func (h *Handler) handleError(c *gin.Context, err error) {
-	if errors.Is(err, Service.ErrNoRecords) || errors.Is(err, Service.ErrUseCaseDeleted) {
+	if errors.Is(err, service.ErrNoRecords) || errors.Is(err, service.ErrUseCaseDeleted) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	if errors.Is(err, Service.ErrForbidden) {
+	if errors.Is(err, service.ErrForbidden) {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
-	if errors.Is(err, Service.ErrBadRequest) {
+	if errors.Is(err, service.ErrBadRequest) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

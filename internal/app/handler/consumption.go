@@ -1,13 +1,34 @@
 package handler
 
 import (
-	"LAB3/internal/app/dto"
+	dto "LAB3/internal/app/DTO"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+func getUserIdFromQuery(c *gin.Context) (uint, error) {
+	// 1. Получаем значение параметра 'user_id' из URL (например, /consumptions?user_id=123)
+	userIdStr := c.Query("user_id")
+
+	// 2. Проверяем, был ли параметр вообще передан. Если нет, возвращаем ошибку.
+	if userIdStr == "" {
+		return 0, errors.New("query parameter 'user_id' is required")
+	}
+
+	// 3. Конвертируем строковое значение в число (uint64).
+	userId, err := strconv.ParseUint(userIdStr, 10, 32)
+	if err != nil {
+		// Если конвертация не удалась (например, передали не число), возвращаем ошибку.
+		return 0, errors.New("invalid 'user_id' format, must be a number")
+	}
+
+	// 4. Возвращаем результат в формате uint и nil в качестве ошибки.
+	return uint(userId), nil
+}
 
 func (h *Handler) getUseCasesInConsumption(c *gin.Context) {
 	userId, err := getUserIdFromQuery(c)

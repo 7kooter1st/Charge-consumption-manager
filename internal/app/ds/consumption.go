@@ -13,6 +13,7 @@ type Consumption struct {
 	CreatedAt   int64  `gorm:"autoCreateTime"`
 	ModeratedAt int64  `gorm:"autoModerateTime"` // Время создания
 	UpdatedAt   int64  `gorm:"autoUpdateTime"`   // Время обновления
+	ModeratorID *uint
 
 	Usecases  []Usecase_consumption `gorm:"foreignKey:UseCaseID"`
 	User      User

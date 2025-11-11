@@ -39,14 +39,14 @@ func main() {
 	log.Println("Successfully connected to the database")
 
 	// 2. Инициализация сервиса
-	appService := service.New(repo)
+	appService := service.NewService(repo)
 
 	// 3. Инициализация обработчика
-	h := handler.New(appService)
+	h := handler.NewHandler(appService)
 
 	// 4. Запуск сервера
 	router := h.InitRoutes()
-	log.Println("Starting server on :8080")
+	log.Println("Starting server on :8000")
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("failed to run server: %s", err.Error())
 	}
