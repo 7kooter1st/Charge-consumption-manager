@@ -1,53 +1,51 @@
 package main
 
 import (
+	"LAB3/internal/app/config"
 	"LAB3/internal/app/dsn"
 	"LAB3/internal/app/handler"
 	"LAB3/internal/app/repository"
 	"LAB3/internal/app/service"
+	"LAB3/internal/pkg"
+
 	"log"
 
 	"github.com/joho/godotenv"
 )
 
-// Функция для загрузки переменных окружения из файла .env
-// Это удобно для локальной разработки
-func loadEnv() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using OS environment variables")
-	}
-}
-
 func main() {
-	// Загружаем переменные окружения
-	loadEnv()
-
-	// 1. Инициализация репозитория
-	// << ИЗМЕНЕНИЕ: Получаем DSN из переменных окружения с помощью вашей функции
-	dbDSN := dsn.FromEnv()
-
-	// << ВАЖНО: Добавляем проверку, что DSN был успешно сформирован
-	if dbDSN == "" {
-		log.Fatal("Database DSN is not configured. Please set DB_HOST, DB_PORT, etc. environment variables or create a .env file.")
+	// 1. Инициализация конфигурации
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatalf("FATAL: error loading config: %v", err)
 	}
 
+	// 2. Инициализация подключения к БД
+	// godotenv.Load() нужен для DSN, так как он читает .env
+	if err := godotenv.Load(); err != nil {
+		log.Println("INFO: No .env file found, using OS environment variables for DB")
+	}
+	dbDSN := dsn.FromEnv()
+	if dbDSN == "" {
+		log.Fatal("FATAL: Database DSN is not configured.")
+	}
+
+	// 3. Инициализация слоев приложения (Repository -> Service -> Handler)
 	repo, err := repository.New(dbDSN)
 	if err != nil {
-		log.Fatalf("failed to initialize repository: %s", err.Error())
+		log.Fatalf("FATAL: error initializing repository: %v", err)
 	}
 
-	log.Println("Successfully connected to the database")
-
-	// 2. Инициализация сервиса
 	appService := service.NewService(repo)
 
-	// 3. Инициализация обработчика
 	h := handler.NewHandler(appService)
 
-	// 4. Запуск сервера
+	// 4. Инициализация роутера
+	// Важно: InitRoutes() настраивает все эндпоинты и возвращает готовый роутер
 	router := h.InitRoutes()
-	log.Println("Starting server on :8000")
-	if err := router.Run(":8080"); err != nil {
-		log.Fatalf("failed to run server: %s", err.Error())
-	}
+
+	// 5. Создание и запуск приложения
+	// Мы передаем все созданные зависимости в наше приложение
+	application := pkg.NewApp(cfg, router, h)
+	application.RunApp()
 }
