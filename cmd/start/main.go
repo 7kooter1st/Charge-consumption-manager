@@ -7,11 +7,39 @@ import (
 	"LAB3/internal/app/repository"
 	"LAB3/internal/app/service"
 	"LAB3/internal/pkg"
-
 	"log"
 
 	"github.com/joho/godotenv"
 )
+
+// @title BITOP
+// @version 1.0
+// @description Bmstu Open IT Platform
+
+// @contact.name API Support
+// @contact.url https://vk.com/bmstu_schedule
+// @contact.email bitop@spatecon.ru
+
+// @license.name AS IS (NO WARRANTY)
+
+// @host 127.0.0.1
+// @schemes https http
+// @BasePath /
+
+// @contact.name API Support
+// @contact.url ...
+// @contact.email ...
+
+// @license.name AS IS (NO WARRANTY)
+
+// @host localhost:8000
+// @BasePath /
+
+// --- ДОБАВЬТЕ ЭТО ОПИСАНИЕ БЕЗОПАСНОСТИ ---
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+// @description Введите "Bearer" пробел и затем ваш токен. Пример: "Bearer eyJhbGciOiJI..."
 
 func main() {
 	// 1. Инициализация конфигурации

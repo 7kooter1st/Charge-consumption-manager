@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,22 +48,51 @@ func (h *Handler) getUseCasesInConsumption(c *gin.Context) {
 	})
 }
 
+// func (h *Handler) getFilteredConsumptions(c *gin.Context) {
+// 	userId, ok := c.Get(userCtx)
+// 	if !ok {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "user id not found in context"})
+// 		return
+// 	}
+
+// 	var filter dto.ConsumptionFilter
+// 	filter.Status = c.Query("status")
+// 	if startDateStr := c.Query("start_date"); startDateStr != "" {
+// 		// Пример парсинга даты, формат можно изменить
+// 		filter.Start_date, _ = time.Parse("2006-01-02", startDateStr)
+// 	}
+// 	if endDateStr := c.Query("end_date"); endDateStr != "" {
+// 		filter.End_date, _ = time.Parse("2006-01-02", endDateStr)
+// 	}
+
+// 	consumptions, err := h.Service.GetFilteredConsumptions(userId, filter)
+// 	if err != nil {
+// 		h.handleError(c, err)
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, consumptions)
+// }
+
 func (h *Handler) getFilteredConsumptions(c *gin.Context) {
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 1. Извлекаем ID пользователя из контекста gin
+	userIdCtx, ok := c.Get(userCtx)
+	if !ok {
+		// Эта ошибка не должна происходить, если middleware отработал правильно
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user id not found in context"})
 		return
 	}
 
+	// 2. Преобразуем (type assertion) ID из interface{} в uint
+	userId, ok := userIdCtx.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user id is of an invalid type"})
+		return
+	}
+
+	// 3. Дальнейшая логика остается прежней, но теперь мы используем безопасный userId
 	var filter dto.ConsumptionFilter
-	filter.Status = c.Query("status")
-	if startDateStr := c.Query("start_date"); startDateStr != "" {
-		// Пример парсинга даты, формат можно изменить
-		filter.Start_date, _ = time.Parse("2006-01-02", startDateStr)
-	}
-	if endDateStr := c.Query("end_date"); endDateStr != "" {
-		filter.End_date, _ = time.Parse("2006-01-02", endDateStr)
-	}
+	// ... (парсинг фильтров)
 
 	consumptions, err := h.Service.GetFilteredConsumptions(userId, filter)
 	if err != nil {
@@ -112,18 +140,47 @@ func (h *Handler) getOneConsumption(c *gin.Context) {
 	c.JSON(http.StatusOK, consumption)
 }
 
+// func (h *Handler) deleteConsumption(c *gin.Context) {
+// 	consumptionId, err := strconv.ParseUint(c.Param("id"), 10, 32)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
+// 		return
+// 	}
+// 	userId, err := getUserIdFromQuery(c)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	if err := h.Service.DeleteConsumption(uint(consumptionId), userId); err != nil {
+// 		h.handleError(c, err)
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, gin.H{"message": "Consumption draft deleted"})
+// }
+
 func (h *Handler) deleteConsumption(c *gin.Context) {
+	// Сначала получаем ID заявки из URL, как и раньше
 	consumptionId, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+	// А ID пользователя берем из контекста
+	userIdCtx, ok := c.Get(userCtx)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user id not found in context"})
+		return
+	}
+	userId, ok := userIdCtx.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user id is of an invalid type"})
 		return
 	}
 
+	// Вызываем сервис с безопасным ID
 	if err := h.Service.DeleteConsumption(uint(consumptionId), userId); err != nil {
 		h.handleError(c, err)
 		return

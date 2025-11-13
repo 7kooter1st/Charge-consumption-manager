@@ -8,6 +8,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CreateUseCase godoc
+// @Summary      Create a new use case
+// @Description  Creates a new use case. Requires moderator permissions.
+// @Tags         Use Cases (Moderator)
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth // <--- Указываем, что этот эндпоинт защищен
+// @Param        useCase body dto.AddUseCase true "Use Case data"
+// @Success      201  {object} ds.UseCase
+// @Failure      400  {object} map[string]string "Bad Request"
+// @Failure      401  {object} map[string]string "Unauthorized"
+// @Failure      403  {object} map[string]string "Forbidden"
+// @Failure      500  {object} map[string]string "Internal Server Error"
+// @Router       /api/usecases [post] // <--- Обновляем путь
+
 func (h *Handler) getUseCases(c *gin.Context) {
 	startValue, _ := strconv.ParseUint(c.Query("start_value"), 10, 32)
 	endValue, _ := strconv.ParseUint(c.Query("end_value"), 10, 32)

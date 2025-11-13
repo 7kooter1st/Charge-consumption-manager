@@ -1,6 +1,7 @@
 package service
 
 import (
+	"LAB3/internal/app/config"
 	"LAB3/internal/app/repository"
 	"errors"
 	"log"
@@ -21,6 +22,7 @@ var ErrUseCaseDeleted = errors.New("этот сценарий использов
 type Service struct {
 	repository  *repository.Repository
 	minioClient *minio.Client
+	config      *config.Config
 }
 
 func NewService(repository *repository.Repository) *Service {
@@ -31,10 +33,16 @@ func NewService(repository *repository.Repository) *Service {
 	if err != nil {
 		log.Fatal(err)
 	}
+	cfg, err := config.NewConfig()
 	return &Service{
 		repository:  repository,
 		minioClient: minioClient,
+		config:      cfg,
 	}
+}
+
+func (s *Service) GetConfig() *config.Config {
+	return s.config
 }
 
 // Вспомогательные функции остаются без изменений

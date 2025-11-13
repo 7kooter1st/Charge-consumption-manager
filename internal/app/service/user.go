@@ -3,8 +3,13 @@ package service
 import (
 	dto "LAB3/internal/app/DTO"
 	"LAB3/internal/app/ds"
+	"LAB3/internal/app/role"
 	"errors"
+	"fmt"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -25,22 +30,22 @@ func (s *Service) GetUserData(userId uint) (dto.UserDataResposne, error) {
 }
 
 // AddNewUser регистрирует нового пользователя
-func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, error) {
-	if user.Login == "" || user.Password == "" {
-		return dto.UserDataResposne{}, ErrBadRequest
-	}
+// func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, error) {
+// 	if user.Login == "" || user.Password == "" {
+// 		return dto.UserDataResposne{}, ErrBadRequest
+// 	}
 
-	userId, err := s.repository.AddNewUser(&ds.User{
-		Login:       user.Login,
-		Password:    user.Password,
-		IsModerator: false,
-	})
-	if err != nil {
-		return dto.UserDataResposne{}, err
-	}
+// 	userId, err := s.repository.AddNewUser(&ds.User{
+// 		Login:       user.Login,
+// 		Password:    user.Password,
+// 		IsModerator: false,
+// 	})
+// 	if err != nil {
+// 		return dto.UserDataResposne{}, err
+// 	}
 
-	return s.GetUserData(userId)
-}
+// 	return s.GetUserData(userId)
+// }
 
 // ChangeUserData изменяет данные пользователя
 func (s *Service) ChangeUserData(userId uint, userData dto.ChangeUserData) (dto.UserDataResposne, error) {
@@ -56,41 +61,71 @@ func (s *Service) ChangeUserData(userId uint, userData dto.ChangeUserData) (dto.
 	return s.GetUserData(userId)
 }
 
-// package service
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
 
-// import (
-// 	dto "lab/internal/app/DTO"
-// 	"lab/internal/app/ds"
-// )
+// Проверка хеша пароля
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
 
-// func (s *Service) GetUserData(userId uint) (dto.UserDataResposne, error) {
+// AddNewUser регистрирует нового пользователя
+func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, error) {
+	if user.Login == "" || user.Password == "" {
+		return dto.UserDataResposne{}, ErrBadRequest
+	}
 
-// 	user, err := s.repository.GetUser(userId)
-// 	if err != nil {
-// 		return dto.UserDataResposne{}, err
-// 	}
+	hashedPassword, err := hashPassword(user.Password)
+	if err != nil {
+		return dto.UserDataResposne{}, err
+	}
 
-// 	return dto.UserDataResposne{Login: user.Login,
-// 		ID: user.ID}, nil
-// }
+	// По умолчанию роль - User
+	newUser := ds.User{
+		Login:    user.Login,
+		Password: hashedPassword,
+		Role:     role.User,
+	}
 
-// func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, error) {
-// 	userId, err := s.repository.AddNewUser(&ds.User{Login: user.Login,
-// 		Password: user.Password})
-// 	if err != nil {
-// 		return dto.UserDataResposne{}, err
-// 	}
-// 	return s.GetUserData(userId)
-// }
+	userId, err := s.repository.AddNewUser(&newUser)
+	if err != nil {
+		return dto.UserDataResposne{}, err
+	}
 
-// func (s *Service) ChangeUserData(user dto.ChangeUserData) (dto.UserDataResposne, error) {
-// 	err := s.repository.ChangeUserData(ds.GetUser().GetId(), user)
-// 	if err != nil {
-// 		return dto.UserDataResposne{}, err
-// 	}
-// 	response, err := s.repository.GetUser(ds.GetUser().GetId())
-// 	if err != nil {
-// 		return dto.UserDataResposne{}, err
-// 	}
-// 	return dto.UserDataResposne{ID: response.ID, Login: response.Login}, nil
-// }
+	return s.GetUserData(userId)
+}
+
+// LoginUser аутентифицирует пользователя и возвращает JWT токен
+func (s *Service) LoginUser(creds dto.UserRegistration) (string, error) {
+	user, err := s.repository.GetUserByLogin(creds.Login)
+	if err != nil {
+		return "", ErrNoRecords // Пользователь не найден
+	}
+
+	if !checkPasswordHash(creds.Password, user.Password) {
+		return "", errors.New("invalid password")
+	}
+
+	// Создаем JWT Claims
+	claims := ds.JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.ExpiresIn)), // Используем конфиг
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "charge-consumption-manager",
+		},
+		UserID: user.ID,
+		Role:   user.Role,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	signedToken, err := token.SignedString([]byte(s.config.JWT.Secret)) // Используем секрет из конфига
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return signedToken, nil
+}

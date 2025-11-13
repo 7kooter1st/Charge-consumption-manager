@@ -49,15 +49,22 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
+type JWTConfig struct {
+	Secret    string
+	ExpiresIn time.Duration
+}
+
 type Config struct {
 	ServiceHost string `mapstructure:"ServiceHost"`
 	ServicePort int    `mapstructure:"ServicePort"`
+	JWT         JWTConfig
 
 	// Поля БД будем загружать из .env
 	DBHost     string

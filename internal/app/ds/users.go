@@ -1,12 +1,16 @@
 package ds
 
-import "sync"
+import (
+	"LAB3/internal/app/role"
+	"sync"
+)
 
 type User struct {
-	ID          uint   `gorm:"primaryKey"`
-	Login       string `gorm:"type:varchar(255);unique"`
-	Password    string `gorm:"type:varchar(255)"`
-	IsModerator bool
+	ID          uint      `gorm:"primaryKey"`
+	Login       string    `gorm:"type:varchar(255);unique"`
+	Password    string    `gorm:"type:varchar(255)" json:"-"` // <-- Добавьте json:"-"
+	IsModerator bool      // Мы заменим это поле на Role
+	Role        role.Role `gorm:"default:0"` // <-- ДОБАВЛЕНО
 }
 
 type singletonUser struct {

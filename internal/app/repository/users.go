@@ -31,3 +31,12 @@ func (r *Repository) ChangeUserData(userId uint, userData dto.ChangeUserData) er
 		}).Error
 
 }
+
+func (r *Repository) GetUserByLogin(login string) (ds.User, error) {
+	var user ds.User
+	err := r.db.Where("login = ?", login).First(&user).Error
+	if err != nil {
+		return ds.User{}, err
+	}
+	return user, nil
+}
