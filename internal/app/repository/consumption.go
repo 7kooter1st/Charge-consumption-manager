@@ -57,10 +57,10 @@ func (r *Repository) GetFilteredConsumptions(userId uint, filter dto.Consumption
 }
 
 func (r *Repository) GetOneConsumption(consumptionId uint, status string) (ds.Consumption, error) {
-	// Вернуть черновик заявки и её сценарии использования
 	var consumption ds.Consumption
 	err := r.db.Where("id = ? AND status = ?", consumptionId, status).
-		Preload("UseCases.UseCase").
+		Preload("Usecases").         // Сначала загружаем связи
+		Preload("Usecases.UseCase"). // Затем загружаем вложенные связи
 		First(&consumption).Error
 	if err != nil {
 		return ds.Consumption{}, err
@@ -80,11 +80,10 @@ func (r *Repository) ChangeConsumptionDuration(consumptionId uint, useCaseId uin
 }
 
 func (r *Repository) FormateConsumption(consumptionId uint) error {
-	// Изменить статус черновика пользователя и проставить дату формирования
 	err := r.db.Model(&ds.Consumption{}).
 		Where("id = ? AND status = 'черновик'", consumptionId).
 		Updates(map[string]any{
-			"updated_at": time.Now(),
+			"updated_at": time.Now().Unix(),
 			"status":     "сформирован",
 		}).Error
 	if err != nil {
@@ -92,8 +91,6 @@ func (r *Repository) FormateConsumption(consumptionId uint) error {
 	}
 	return nil
 }
-
-// /////
 
 func (r *Repository) ModeratorAction(ConsumptionId uint, action string, totalConsumption float64, moderatorId uint) error {
 	//TODO Отклонение/Завершение заявки модератором, проставить модератора, дату действия, рассчитать поле итоговой мощности
@@ -111,8 +108,6 @@ func (r *Repository) ModeratorAction(ConsumptionId uint, action string, totalCon
 	}
 	return nil
 }
-
-//////
 
 func (r *Repository) DeleteConsumption(consumptionId uint) error {
 	// Проставить статус заявки удален и прописать дату удаления

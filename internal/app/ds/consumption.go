@@ -15,7 +15,9 @@ type Consumption struct {
 	UpdatedAt   int64  `gorm:"autoUpdateTime"`   // Время обновления
 	ModeratorID *uint
 
-	Usecases  []Usecase_consumption `gorm:"foreignKey:UseCaseID"`
-	User      User
-	Moderator User
+	Usecases []Usecase_consumption `gorm:"foreignKey:ConsumptionID;references:ID;constraint:OnDelete:CASCADE;"`
+
+	// Связи для Preload
+	User      User `gorm:"foreignKey:UserID"`
+	Moderator User `gorm:"foreignKey:ModeratorID"`
 }

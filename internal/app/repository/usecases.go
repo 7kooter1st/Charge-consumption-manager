@@ -78,7 +78,7 @@ func (r *Repository) AddUseCaseToConsumption(UseCase_ID uint, Consumption_ID uin
 	return nil
 }
 
-func (r *Repository) AddImageToSolarPanel(UseCaseID uint, imageURL string) error {
+func (r *Repository) AddImageToUseCase(UseCaseID uint, imageURL string) error {
 	return r.db.Model(&ds.UseCase{}).
 		Where("id = ?", UseCaseID).
 		Update("URL", imageURL).Error

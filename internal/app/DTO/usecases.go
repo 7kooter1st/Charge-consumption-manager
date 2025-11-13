@@ -12,7 +12,7 @@ type UseCaseFromConsumptionResponse struct {
 
 type AddUseCase struct {
 	Name        string `json:"name" binding:"required"`
-	URL         string `json:"url" binding:"required"`
+	URL         string `json:"url"`
 	Description string `json:"description"`
 	Consumption uint   `json:"consumption" binding:"required"`
 }
@@ -22,4 +22,8 @@ type ChangeUseCase struct {
 	URL         string `json:"url,omitempty"`
 	Description string `json:"description,omitempty"`
 	Consumption uint   `json:"consumption,omitempty"`
+}
+
+type AddImageRequest struct {
+	ImageURL string `json:"image_url" binding:"required,url"`
 }

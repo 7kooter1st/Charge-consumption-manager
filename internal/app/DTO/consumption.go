@@ -31,7 +31,7 @@ type ChangeConsumptionDuration struct {
 }
 
 type ModeratorAction struct {
-	Action           string  `json:"action" binding:"required"`
-	TotalConsumption float64 `json:"total_consumption" binding:"required"`
-	ModeratorID      uint    `json:"moderator_id" binding:"required"`
+	Action string `json:"action" binding:"required"`
+	// TotalConsumption float64 `json:"total_consumption" binding:"required"`
+	ModeratorID uint `json:"moderator_id" binding:"required"`
 }

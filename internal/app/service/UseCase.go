@@ -48,7 +48,7 @@ func (s *Service) GetUseCase(useCaseId uint) (ds.UseCase, error) {
 
 // AddUseCase добавляет новый сценарий использования
 func (s *Service) AddUseCase(newUseCase dto.AddUseCase) (ds.UseCase, error) {
-	if newUseCase.Name == "" || newUseCase.URL == "" || newUseCase.Consumption == 0 {
+	if newUseCase.Name == "" || newUseCase.Consumption == 0 {
 		return ds.UseCase{}, ErrBadRequest
 	}
 
@@ -124,4 +124,18 @@ func (s *Service) UpdateUseCase(useCaseId uint, updateData dto.ChangeUseCase) (d
 	}
 
 	return useCase, nil
+}
+
+func (s *Service) AddImageToUseCase(useCaseId uint, imageUrl string) error {
+	if imageUrl == "" {
+		return ErrBadRequest
+	}
+	useCase, err := s.repository.GetUseCase(useCaseId)
+	if err != nil {
+		return err
+	}
+	if useCase.IsDelete {
+		return ErrUseCaseDeleted
+	}
+	return s.repository.AddImageToUseCase(useCaseId, imageUrl)
 }

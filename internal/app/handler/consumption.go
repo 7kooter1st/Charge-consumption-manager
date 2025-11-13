@@ -240,6 +240,28 @@ func (h *Handler) changeUseCaseDurationInConsumption(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// func (h *Handler) moderatorAction(c *gin.Context) {
+// 	consumptionId, err := strconv.ParseUint(c.Param("id"), 10, 32)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
+// 		return
+// 	}
+
+// 	var input dto.ModeratorAction
+// 	if err := c.ShouldBindJSON(&input); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	response, err := h.Service.ModeratorAction(uint(consumptionId), input.Action, input.ModeratorID)
+// 	if err != nil {
+// 		h.handleError(c, err)
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, response)
+// }
+
 func (h *Handler) moderatorAction(c *gin.Context) {
 	consumptionId, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -247,12 +269,13 @@ func (h *Handler) moderatorAction(c *gin.Context) {
 		return
 	}
 
-	var input dto.ModeratorAction
+	var input dto.ModeratorAction // Теперь используется исправленная DTO
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Передаем в сервис только нужные параметры
 	response, err := h.Service.ModeratorAction(uint(consumptionId), input.Action, input.ModeratorID)
 	if err != nil {
 		h.handleError(c, err)

@@ -29,48 +29,41 @@ func NewHandler(s *service.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.Default()
 
-	// Группа маршрутов для аутентификации и регистрации пользователей
-	auth := router.Group("/auth")
-	{
-		auth.POST("/register", h.registerUser)
-		// Здесь обычно добавляют эндпоинт для логина, который возвращает JWT
-	}
-
-	// Группа маршрутов для пользователей (защищается middleware в реальном приложении)
 	users := router.Group("/users")
 	{
 		users.GET("/:id", h.getUserData)
 		users.PUT("/:id", h.changeUserData)
+		users.POST("/register", h.registerUser)
 	}
 
-	// Группа маршрутов для сценариев использования (Use Cases)
 	usecases := router.Group("/usecases")
 	{
 		usecases.GET("/", h.getUseCases)
-		usecases.POST("/", h.createUseCase) // Может быть доступно только модераторам
 		usecases.GET("/:id", h.getUseCaseByID)
-		usecases.PUT("/:id", h.updateUseCase)    // Может быть доступно только модераторам
-		usecases.DELETE("/:id", h.deleteUseCase) // Может быть доступно только модераторам
+		usecases.POST("/", h.createUseCase)
+		usecases.PUT("/:id", h.updateUseCase)
+		usecases.DELETE("/:id", h.deleteUseCase)
+		// Маршрут для обновления картинки сценария
+		usecases.PUT("/:id/image", h.addImageToUseCase)
 	}
 
-	// Группа маршрутов для заявок на потребление (Consumptions)
 	consumptions := router.Group("/consumptions")
 	{
-		// Маршруты для обычных пользователей
+		// Основные маршруты для заявок
 		consumptions.GET("/", h.getFilteredConsumptions)
 		consumptions.POST("/", h.createNewConsumption)
 		consumptions.GET("/draft", h.getUseCasesInConsumption)
 		consumptions.GET("/:id", h.getOneConsumption)
 		consumptions.DELETE("/:id", h.deleteConsumption)
+
+		// Маршруты для изменения состояния заявки
 		consumptions.PUT("/:id/formate", h.formateConsumption)
-
-		// Маршруты для управления сценариями внутри заявки
-		consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
-		consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
-		consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
-
-		// Маршруты только для модераторов
 		consumptions.PUT("/:id/moderate", h.moderatorAction)
+
+		// Маршруты для управления сценариями ВНУТРИ заявки
+		consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
+		consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
+		consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
 	}
 
 	return router
