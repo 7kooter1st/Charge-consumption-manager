@@ -61,6 +61,15 @@ type JWTConfig struct {
 	ExpiresIn time.Duration
 }
 
+type RedisConfig struct {
+	Host        string
+	Password    string
+	Port        int
+	User        string
+	DialTimeout time.Duration
+	ReadTimeout time.Duration
+}
+
 type Config struct {
 	ServiceHost string `mapstructure:"ServiceHost"`
 	ServicePort int    `mapstructure:"ServicePort"`
@@ -74,6 +83,13 @@ type Config struct {
 	DBName     string
 	DBSSLMode  string
 }
+
+const (
+	envRedisHost = "REDIS_HOST"
+	envRedisPort = "REDIS_PORT"
+	envRedisUser = "REDIS_USER"
+	envRedisPass = "REDIS_PASSWORD"
+)
 
 func NewConfig() (*Config, error) {
 	var err error
@@ -109,6 +125,15 @@ func NewConfig() (*Config, error) {
 	cfg.DBPassword = getEnv("DB_PASSWORD", "postgres1234")
 	cfg.DBName = getEnv("DB_NAME", "consumption-manager")
 	cfg.DBSSLMode = getEnv("DB_SSLMODE", "disable")
+	// cfg.Redis.Host = os.Getenv(envRedisHost)
+	// cfg.Redis.Port, err = strconv.Atoi(os.Getenv(envRedisPort))
+
+	// if err != nil {
+	// 	return nil, fmt.Errorf("redis port must be int value: %w", err)
+	// }
+	// п
+	// 	cfg.Redis.Password = os.Getenv(envRedisPass)
+	// 	cfg.Redis.User = os.Getenv(envRedisUser)
 
 	// ОТЛАДКА
 	log.Infof("Service: %s:%d", cfg.ServiceHost, cfg.ServicePort)

@@ -96,7 +96,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		// Чтение сценариев доступно всем залогиненным пользователям
 		api.GET("/usecases", h.getUseCases)
 		api.GET("/usecases/:id", h.getUseCaseByID)
-		api.GET("/me", h.getMe)
+		// api.GET("/me", h.getMe)
 		moderator := api.Group("/", h.requireRole(role.Moderator))
 		{
 			// Модератор может модерировать заявки
