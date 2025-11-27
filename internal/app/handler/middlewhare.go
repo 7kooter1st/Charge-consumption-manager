@@ -17,37 +17,105 @@ const (
 	roleCtx             = "userRole"
 )
 
+// func (h *Handler) userIdentity(c *gin.Context) {
+// 	header := c.GetHeader(authorizationHeader)
+// 	tokenStr := headerParts[1]
+// 	if header == "" {
+// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "empty auth header"})
+// 		return
+// 	}
+
+// 	inBlacklist, err := h.Service.IsInBlacklist(c.Request.Context(), tokenStr)
+// 	if err != nil {
+// 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to check token blacklist"})
+// 		return
+// 	}
+// 	if inBlacklist {
+// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been logged out"})
+// 		return
+// 	}
+
+// 	headerParts := strings.Split(header, " ")
+// 	if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid auth header"})
+// 		return
+// 	}
+
+// 	token, err := jwt.ParseWithClaims(headerParts[1], &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, errors.New("invalid signing method")
+// 		}
+// 		return []byte(h.Service.GetConfig().JWT.Secret), nil // <-- Получаем секрет через сервис
+// 	})
+// 	if err != nil {
+// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	claims, ok := token.Claims.(*ds.JWTClaims)
+// 	if !ok {
+// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token claims are not of type *JWTClaims"})
+// 		return
+// 	}
+
+// 	// Сохраняем ID и роль пользователя в контекст для дальнейшего использования
+// 	c.Set(userCtx, claims.UserID)
+// 	c.Set(roleCtx, claims.Role)
+// }
+
 func (h *Handler) userIdentity(c *gin.Context) {
+	// 1. Получаем заголовок
 	header := c.GetHeader(authorizationHeader)
 	if header == "" {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "empty auth header"})
 		return
 	}
 
+	// 2. Проверяем формат заголовка и извлекаем токен
 	headerParts := strings.Split(header, " ")
 	if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid auth header"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid auth header format"})
 		return
 	}
 
-	token, err := jwt.ParseWithClaims(headerParts[1], &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	if len(headerParts[1]) == 0 {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token is empty"})
+		return
+	}
+	tokenStr := headerParts[1]
+
+	// 3. Проверяем, не находится ли токен в черном списке
+	inBlacklist, err := h.Service.IsInBlacklist(c.Request.Context(), tokenStr)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to check token blacklist"})
+		return
+	}
+	if inBlacklist {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been logged out"})
+		return
+	}
+
+	// 4. Парсим и валидируем подпись токена
+	token, err := jwt.ParseWithClaims(tokenStr, &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")
 		}
-		return []byte(h.Service.GetConfig().JWT.Secret), nil // <-- Получаем секрет через сервис
+		// h.Service.GetConfig() должен существовать в вашем сервисе,
+		// чтобы получать доступ к секретному ключу.
+		return []byte(h.Service.GetConfig().JWT.Secret), nil
 	})
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token: " + err.Error()})
 		return
 	}
 
+	// 5. Проверяем claims и сохраняем данные в контекст
 	claims, ok := token.Claims.(*ds.JWTClaims)
-	if !ok {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token claims are not of type *JWTClaims"})
+	if !ok || !token.Valid {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 		return
 	}
 
-	// Сохраняем ID и роль пользователя в контекст для дальнейшего использования
 	c.Set(userCtx, claims.UserID)
 	c.Set(roleCtx, claims.Role)
 }

@@ -8,6 +8,7 @@ import (
 
 type JWTClaims struct {
 	jwt.RegisteredClaims
-	UserID uint      `json:"user_id"`
-	Role   role.Role `json:"role"`
+	UserID    uint      `json:"user_id"`
+	Role      role.Role `json:"role"`
+	IsRefresh bool      `json:"is_refresh"` // <-- ДОБАВЛЕНО
 }

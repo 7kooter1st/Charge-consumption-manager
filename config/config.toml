@@ -1,2 +1,5 @@
 ServiceHost = "0.0.0.0"
 ServicePort = 8000
+Secret = "your_super_secret_key"
+ExpiresIn = "15m"  # <-- Уменьшаем время жизни Access Token до 15 минут
+RefreshExpiresIn = "720h" # <-- Refresh Token живет 30 дней
