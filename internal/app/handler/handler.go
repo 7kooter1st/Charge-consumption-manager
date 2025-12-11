@@ -70,8 +70,8 @@ func NewHandler(s *service.Service) *Handler {
 // 	return router
 // }
 
-func (h *Handler) InitRoutes() *gin.Engine {
-	router := gin.Default()
+func (h *Handler) InitRoutes(router *gin.Engine) {
+	// router := gin.Default()
 	router.POST("/users/register", h.registerUser)
 	router.POST("/users/login", h.login)
 
@@ -113,7 +113,6 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		}
 	}
 
-	return router
 }
 
 func (h *Handler) handleError(c *gin.Context, err error) {

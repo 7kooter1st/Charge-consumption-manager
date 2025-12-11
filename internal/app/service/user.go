@@ -99,33 +99,57 @@ func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, e
 }
 
 // LoginUser аутентифицирует пользователя и возвращает JWT токен
-func (s *Service) LoginUser(creds dto.UserRegistration) (string, error) {
+func (s *Service) LoginUser(creds dto.UserRegistration) (string, string, error) {
 	user, err := s.repository.GetUserByLogin(creds.Login)
 	if err != nil {
-		return "", ErrNoRecords // Пользователь не найден
+		return "", "", ErrNoRecords // Пользователь не найден
 	}
 
 	if !checkPasswordHash(creds.Password, user.Password) {
-		return "", errors.New("invalid password")
+		return "", "", errors.New("invalid password")
 	}
 
 	// Создаем JWT Claims
-	claims := ds.JWTClaims{
+	accessClaims := ds.JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.ExpiresIn)), // Используем конфиг
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "charge-consumption-manager",
 		},
-		UserID: user.ID,
-		Role:   user.Role,
+		UserID:    user.ID,
+		Role:      user.Role,
+		IsRefresh: false,
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signedToken, err := token.SignedString([]byte(s.config.JWT.Secret)) // Используем секрет из конфига
+	// signedToken, err := token.SignedString([]byte(s.config.JWT.Secret)) // Используем секрет из конфига
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to sign token: %w", err)
+	// }
+
+	// return signedToken, nil
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString([]byte(s.config.JWT.Secret))
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
+		return "", "", fmt.Errorf("failed to sign access token: %w", err)
 	}
 
-	return signedToken, nil
+	// --- 4. Создаем Refresh Token (долгоживущий) ---
+	refreshClaims := ds.JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.RefreshExpiresIn)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "charge-consumption-manager",
+		},
+		UserID:    user.ID,
+		Role:      user.Role,
+		IsRefresh: true, // <-- Указываем, что это refresh токен
+	}
+	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(s.config.JWT.Secret))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to sign refresh token: %w", err)
+	}
+
+	// 5. Возвращаем оба токена
+	return accessToken, refreshToken, nil
 }

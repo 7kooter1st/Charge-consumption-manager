@@ -29,7 +29,7 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.Service.LoginUser(input)
+	accessToken, refreshToken, err := h.Service.LoginUser(input)
 	if err != nil {
 		if err == service.ErrNoRecords || err.Error() == "invalid password" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid login or password"})
@@ -39,7 +39,10 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{
+		"accesstoken":  accessToken,
+		"refreshtoken": refreshToken,
+	})
 }
 
 func (h *Handler) registerUser(c *gin.Context) {

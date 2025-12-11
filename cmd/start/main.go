@@ -127,7 +127,7 @@ func main() {
 
 	// 6. Инициализация роутера
 	router := gin.Default()
-	h.InitRoutes() // Предполагается, что InitRoutes настраивает переданный роутер
+	h.InitRoutes(router) // Предполагается, что InitRoutes настраивает переданный роутер
 
 	// 7. Создание и запуск приложения
 	application := pkg.NewApp(cfg, router, h)

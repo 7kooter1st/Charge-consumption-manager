@@ -1,4 +1,4 @@
-ServiceHost = "0.0.0.0"
+ServiceHost = "127.0.0.1"
 ServicePort = 8000
 Secret = "your_super_secret_key"
 ExpiresIn = "15m"  # <-- Уменьшаем время жизни Access Token до 15 минут
