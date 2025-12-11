@@ -17,52 +17,6 @@ const (
 	roleCtx             = "userRole"
 )
 
-// func (h *Handler) userIdentity(c *gin.Context) {
-// 	header := c.GetHeader(authorizationHeader)
-// 	tokenStr := headerParts[1]
-// 	if header == "" {
-// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "empty auth header"})
-// 		return
-// 	}
-
-// 	inBlacklist, err := h.Service.IsInBlacklist(c.Request.Context(), tokenStr)
-// 	if err != nil {
-// 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to check token blacklist"})
-// 		return
-// 	}
-// 	if inBlacklist {
-// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been logged out"})
-// 		return
-// 	}
-
-// 	headerParts := strings.Split(header, " ")
-// 	if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid auth header"})
-// 		return
-// 	}
-
-// 	token, err := jwt.ParseWithClaims(headerParts[1], &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-// 			return nil, errors.New("invalid signing method")
-// 		}
-// 		return []byte(h.Service.GetConfig().JWT.Secret), nil // <-- Получаем секрет через сервис
-// 	})
-// 	if err != nil {
-// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	claims, ok := token.Claims.(*ds.JWTClaims)
-// 	if !ok {
-// 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token claims are not of type *JWTClaims"})
-// 		return
-// 	}
-
-// 	// Сохраняем ID и роль пользователя в контекст для дальнейшего использования
-// 	c.Set(userCtx, claims.UserID)
-// 	c.Set(roleCtx, claims.Role)
-// }
-
 func (h *Handler) userIdentity(c *gin.Context) {
 	// 1. Получаем заголовок
 	header := c.GetHeader(authorizationHeader)

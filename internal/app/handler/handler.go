@@ -1,11 +1,13 @@
 package handler
 
 import (
+	dto "LAB3/internal/app/DTO"
 	"LAB3/internal/app/role"
 	"LAB3/internal/app/service"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,92 +29,179 @@ func NewHandler(s *service.Service) *Handler {
 	}
 }
 
+func (h *Handler) refreshToken(c *gin.Context) {
+	var input dto.RefreshRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	accessToken, refreshToken, err := h.Service.RefreshTokens(input.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+func (h *Handler) logout(c *gin.Context) {
+	// 1. Получаем заголовок Authorization
+	header := c.GetHeader("Authorization")
+	if header == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "empty auth header"})
+		return
+	}
+
+	// 2. Извлекаем токен (убираем "Bearer ")
+	headerParts := strings.Split(header, " ")
+	if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid auth header"})
+		return
+	}
+	tokenStr := headerParts[1]
+
+	// 3. Добавляем токен в черный список через сервис
+	// (Метод AddToBlacklist мы добавили в service.go в предыдущих шагах)
+	err := h.Service.AddToBlacklist(c.Request.Context(), tokenStr)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
+}
+
 // func (h *Handler) InitRoutes() *gin.Engine {
 // 	router := gin.Default()
 
-// 	users := router.Group("/users")
+// 	router.Use(func(c *gin.Context) {
+// 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // В проде лучше указать конкретный домен фронта
+// 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+// 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+// 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+// 		if c.Request.Method == "OPTIONS" {
+// 			c.AbortWithStatus(204)
+// 			return
+// 		}
+// 		c.Next()
+// 	})
+
+// 	router.POST("/users/register", h.registerUser)
+// 	router.POST("/users/login", h.login)
+
+// 	api := router.Group("/api", h.userIdentity)
 // 	{
-// 		users.GET("/:id", h.getUserData)
-// 		users.PUT("/:id", h.changeUserData)
-// 		users.POST("/register", h.registerUser)
+// 		api.GET("/users/me", h.getMe) // Нужно будет создать обработчик getMe
+// 		consumptions := api.Group("/consumptions")
+// 		{
+// 			consumptions.GET("/", h.getFilteredConsumptions)
+// 			consumptions.POST("/", h.createNewConsumption)
+// 			consumptions.GET("/draft", h.getUseCasesInConsumption)
+// 			consumptions.GET("/:id", h.getOneConsumption)
+// 			consumptions.DELETE("/:id", h.deleteConsumption)
+// 			consumptions.PUT("/:id/formate", h.formateConsumption)
+
+// 			// Управление сценариями внутри заявки
+// 			consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
+// 			consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
+// 			consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
+// 		}
+
+// 		// Чтение сценариев доступно всем залогиненным пользователям
+// 		api.GET("/usecases", h.getUseCases)
+// 		api.GET("/usecases/:id", h.getUseCaseByID)
+// 		// api.GET("/me", h.getMe)
+// 		moderator := api.Group("/", h.requireRole(role.Moderator))
+// 		{
+// 			// Модератор может модерировать заявки
+// 			moderator.PUT("/consumptions/:id/moderate", h.moderatorAction)
+
+// 			// Модератор может управлять сценариями (создавать, изменять, удалять)
+// 			usecases := moderator.Group("/usecases")
+// 			{
+// 				usecases.POST("/", h.createUseCase)
+// 				usecases.PUT("/:id", h.updateUseCase)
+// 				usecases.DELETE("/:id", h.deleteUseCase)
+// 				usecases.PUT("/:id/image", h.addImageToUseCase)
+// 			}
+// 		}
 // 	}
-
-// 	usecases := router.Group("/usecases")
-// 	{
-// 		usecases.GET("/", h.getUseCases)
-// 		usecases.GET("/:id", h.getUseCaseByID)
-// 		usecases.POST("/", h.createUseCase)
-// 		usecases.PUT("/:id", h.updateUseCase)
-// 		usecases.DELETE("/:id", h.deleteUseCase)
-// 		// Маршрут для обновления картинки сценария
-// 		usecases.PUT("/:id/image", h.addImageToUseCase)
-// 	}
-
-// 	consumptions := router.Group("/consumptions")
-// 	{
-// 		// Основные маршруты для заявок
-// 		consumptions.GET("/", h.getFilteredConsumptions)
-// 		consumptions.POST("/", h.createNewConsumption)
-// 		consumptions.GET("/draft", h.getUseCasesInConsumption)
-// 		consumptions.GET("/:id", h.getOneConsumption)
-// 		consumptions.DELETE("/:id", h.deleteConsumption)
-
-// 		// Маршруты для изменения состояния заявки
-// 		consumptions.PUT("/:id/formate", h.formateConsumption)
-// 		consumptions.PUT("/:id/moderate", h.moderatorAction)
-
-// 		// Маршруты для управления сценариями ВНУТРИ заявки
-// 		consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
-// 		consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
-// 		consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
-// 	}
-
 // 	return router
 // }
 
 func (h *Handler) InitRoutes(router *gin.Engine) {
-	// router := gin.Default()
+
+	// Настройка CORS (ОЧЕНЬ ВАЖНО ДЛЯ ФРОНТЕНДА)
+	// Добавь middleware для CORS, если его еще нет, иначе фронт не сможет слать запросы
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // В проде лучше указать конкретный домен фронта
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
+	// --- ПУБЛИЧНАЯ ЗОНА (Доступна без токена) ---
+
+	// Auth
 	router.POST("/users/register", h.registerUser)
 	router.POST("/users/login", h.login)
+	router.POST("/users/refresh", h.refreshToken) // Если реализовано
 
-	api := router.Group("/api", h.userIdentity)
+	// Usecases (Чтение доступно всем!)
+	publicUseCases := router.Group("/usecases")
 	{
-		api.GET("/users/me", h.getMe) // Нужно будет создать обработчик getMe
-		consumptions := api.Group("/consumptions")
-		{
-			consumptions.GET("/", h.getFilteredConsumptions)
-			consumptions.POST("/", h.createNewConsumption)
-			consumptions.GET("/draft", h.getUseCasesInConsumption)
-			consumptions.GET("/:id", h.getOneConsumption)
-			consumptions.DELETE("/:id", h.deleteConsumption)
-			consumptions.PUT("/:id/formate", h.formateConsumption)
-
-			// Управление сценариями внутри заявки
-			consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
-			consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
-			consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
-		}
-
-		// Чтение сценариев доступно всем залогиненным пользователям
-		api.GET("/usecases", h.getUseCases)
-		api.GET("/usecases/:id", h.getUseCaseByID)
-		// api.GET("/me", h.getMe)
-		moderator := api.Group("/", h.requireRole(role.Moderator))
-		{
-			// Модератор может модерировать заявки
-			moderator.PUT("/consumptions/:id/moderate", h.moderatorAction)
-
-			// Модератор может управлять сценариями (создавать, изменять, удалять)
-			usecases := moderator.Group("/usecases")
-			{
-				usecases.POST("/", h.createUseCase)
-				usecases.PUT("/:id", h.updateUseCase)
-				usecases.DELETE("/:id", h.deleteUseCase)
-				usecases.PUT("/:id/image", h.addImageToUseCase)
-			}
-		}
+		publicUseCases.GET("/", h.getUseCases)       // Получить список
+		publicUseCases.GET("/:id", h.getUseCaseByID) // Получить подробности
 	}
 
+	// Swagger (если подключен)
+	// router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// --- ЗАЩИЩЕННАЯ ЗОНА (Требуется логин) ---
+	api := router.Group("/api", h.userIdentity)
+	{
+		users := api.Group("/users")
+		{
+			users.GET("/me", h.getMe)
+			users.POST("/logout", h.logout)
+		}
+
+		consumptions := api.Group("/consumptions")
+		{
+			// ... твои маршруты заявок ...
+			consumptions.GET("/", h.getFilteredConsumptions)
+			consumptions.POST("/", h.createNewConsumption)
+			// и так далее
+		}
+
+		// --- ЗОНА МОДЕРАТОРА ---
+		moderator := api.Group("/", h.requireRole(role.Moderator))
+		{
+			// Управление сценариями (только модератор может менять их)
+			modUseCases := moderator.Group("/usecases")
+			{
+				modUseCases.POST("/", h.createUseCase)
+				modUseCases.PUT("/:id", h.updateUseCase)
+				modUseCases.DELETE("/:id", h.deleteUseCase)
+
+				// Загрузка картинки
+				modUseCases.PUT("/:id/image", h.addImageToUseCase)
+			}
+
+			moderator.PUT("/consumptions/:id/moderate", h.moderatorAction)
+		}
+	}
 }
 
 func (h *Handler) handleError(c *gin.Context, err error) {

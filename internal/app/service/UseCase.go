@@ -3,8 +3,14 @@ package service
 import (
 	dto "LAB3/internal/app/DTO"
 	"LAB3/internal/app/ds"
+	"context"
 	"errors"
+	"fmt"
+	"mime/multipart"
+	"path/filepath"
 
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 	"gorm.io/gorm"
 )
 
@@ -126,16 +132,78 @@ func (s *Service) UpdateUseCase(useCaseId uint, updateData dto.ChangeUseCase) (d
 	return useCase, nil
 }
 
-func (s *Service) AddImageToUseCase(useCaseId uint, imageUrl string) error {
-	if imageUrl == "" {
-		return ErrBadRequest
-	}
-	useCase, err := s.repository.GetUseCase(useCaseId)
+// func (s *Service) AddImageToUseCase(useCaseId uint, imageUrl string) error {
+// 	if imageUrl == "" {
+// 		return ErrBadRequest
+// 	}
+// 	useCase, err := s.repository.GetUseCase(useCaseId)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if useCase.IsDelete {
+// 		return ErrUseCaseDeleted
+// 	}
+// 	return s.repository.AddImageToUseCase(useCaseId, imageUrl)
+// }
+
+func (s *Service) UploadUseCaseImage(ctx context.Context, useCaseId uint, file *multipart.FileHeader) (string, error) {
+	// 1. Проверяем существование UseCase (можно пропустить, если Repository.AddImageToUseCase это проверяет, но лучше проверить)
+	_, err := s.repository.GetUseCase(useCaseId)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if useCase.IsDelete {
-		return ErrUseCaseDeleted
+
+	// 2. Подготавливаем файл к загрузке
+	src, err := file.Open()
+	if err != nil {
+		return "", err
 	}
-	return s.repository.AddImageToUseCase(useCaseId, imageUrl)
+	defer src.Close()
+
+	// Генерируем уникальное имя файла, чтобы не перезатереть существующие
+	ext := filepath.Ext(file.Filename)
+	newFilename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+
+	bucketName := s.config.Minio.Bucket
+
+	// 3. Проверяем, существует ли бакет, если нет — создаем
+	exists, err := s.minioClient.BucketExists(ctx, bucketName)
+	if err != nil {
+		return "", fmt.Errorf("minio bucket check failed: %w", err)
+	}
+	if !exists {
+		err = s.minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to create bucket: %w", err)
+		}
+		// Устанавливаем политику доступа (чтобы картинки были публичными для чтения)
+		policy := fmt.Sprintf(`{"Version": "2012-10-17","Statement": [{"Action": ["s3:GetObject"],"Effect": "Allow","Principal": {"AWS": ["*"]},"Resource": ["arn:aws:s3:::%s/*"],"Sid": ""}]}`, bucketName)
+		_ = s.minioClient.SetBucketPolicy(ctx, bucketName, policy)
+	}
+
+	// 4. Загружаем файл
+	// Content-Type берем из заголовка файла или ставим "application/octet-stream"
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	_, err = s.minioClient.PutObject(ctx, bucketName, newFilename, src, file.Size, minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to upload to minio: %w", err)
+	}
+
+	// 5. Формируем публичную ссылку
+	// http://localhost:9000/bucket-name/filename.ext
+	imageURL := fmt.Sprintf("%s/%s/%s", s.config.Minio.PublicUrl, bucketName, newFilename)
+
+	// 6. Сохраняем ссылку в БД
+	err = s.repository.AddImageToUseCase(useCaseId, imageURL)
+	if err != nil {
+		return "", err
+	}
+
+	return imageURL, nil
 }

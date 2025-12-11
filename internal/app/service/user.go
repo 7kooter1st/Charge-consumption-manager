@@ -29,24 +29,6 @@ func (s *Service) GetUserData(userId uint) (dto.UserDataResposne, error) {
 	}, nil
 }
 
-// AddNewUser регистрирует нового пользователя
-// func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, error) {
-// 	if user.Login == "" || user.Password == "" {
-// 		return dto.UserDataResposne{}, ErrBadRequest
-// 	}
-
-// 	userId, err := s.repository.AddNewUser(&ds.User{
-// 		Login:       user.Login,
-// 		Password:    user.Password,
-// 		IsModerator: false,
-// 	})
-// 	if err != nil {
-// 		return dto.UserDataResposne{}, err
-// 	}
-
-// 	return s.GetUserData(userId)
-// }
-
 // ChangeUserData изменяет данные пользователя
 func (s *Service) ChangeUserData(userId uint, userData dto.ChangeUserData) (dto.UserDataResposne, error) {
 	if userData.Login == "" {
@@ -102,54 +84,81 @@ func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, e
 func (s *Service) LoginUser(creds dto.UserRegistration) (string, string, error) {
 	user, err := s.repository.GetUserByLogin(creds.Login)
 	if err != nil {
-		return "", "", ErrNoRecords // Пользователь не найден
+		return "", "", ErrNoRecords
 	}
 
 	if !checkPasswordHash(creds.Password, user.Password) {
 		return "", "", errors.New("invalid password")
 	}
 
-	// Создаем JWT Claims
+	return s.generateTokenPair(user.ID, user.Role)
+}
+
+// RefreshTokens - валидирует refresh токен и выдает новую пару
+func (s *Service) RefreshTokens(refreshTokenStr string) (string, string, error) {
+	// 1. Парсим токен
+	token, err := jwt.ParseWithClaims(refreshTokenStr, &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(s.config.JWT.Secret), nil
+	})
+
+	if err != nil {
+		return "", "", err
+	}
+
+	// 2. Валидируем claims
+	if claims, ok := token.Claims.(*ds.JWTClaims); ok && token.Valid {
+		// ВАЖНО: Проверяем, что нам подсунули именно Refresh токен, а не старый Access
+		if !claims.IsRefresh {
+			return "", "", fmt.Errorf("token is not a refresh token")
+		}
+
+		// 3. (Опционально) Проверяем, существует ли пользователь в БД до сих пор
+		// user, err := s.repository.GetUser(claims.UserID)
+		// if err != nil { return "", "", err }
+
+		// 4. Генерируем новую пару токенов (ротация refresh токена)
+		return s.generateTokenPair(claims.UserID, claims.Role)
+	}
+
+	return "", "", fmt.Errorf("invalid token")
+}
+
+// Вспомогательная функция для генерации пары токенов (чтобы не дублировать код)
+func (s *Service) generateTokenPair(userID uint, userRole role.Role) (string, string, error) {
+	// --- Access Token ---
 	accessClaims := ds.JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.ExpiresIn)), // Используем конфиг
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.ExpiresIn)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "charge-consumption-manager",
 		},
-		UserID:    user.ID,
-		Role:      user.Role,
-		IsRefresh: false,
+		UserID:    userID,
+		Role:      userRole,
+		IsRefresh: false, // Это Access токен
 	}
-
-	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// signedToken, err := token.SignedString([]byte(s.config.JWT.Secret)) // Используем секрет из конфига
-	// if err != nil {
-	// 	return "", fmt.Errorf("failed to sign token: %w", err)
-	// }
-
-	// return signedToken, nil
 	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString([]byte(s.config.JWT.Secret))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to sign access token: %w", err)
 	}
 
-	// --- 4. Создаем Refresh Token (долгоживущий) ---
+	// --- Refresh Token ---
 	refreshClaims := ds.JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.RefreshExpiresIn)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "charge-consumption-manager",
 		},
-		UserID:    user.ID,
-		Role:      user.Role,
-		IsRefresh: true, // <-- Указываем, что это refresh токен
+		UserID:    userID,
+		Role:      userRole,
+		IsRefresh: true, // Это Refresh токен
 	}
 	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(s.config.JWT.Secret))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to sign refresh token: %w", err)
 	}
 
-	// 5. Возвращаем оба токена
 	return accessToken, refreshToken, nil
 }

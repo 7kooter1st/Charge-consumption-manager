@@ -106,29 +106,31 @@ func (h *Handler) deleteUseCase(c *gin.Context) {
 }
 
 func (h *Handler) addImageToUseCase(c *gin.Context) {
-	// 1. Извлекаем ID сценария из URL (например, /usecases/123/image)
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	// 1. Парсим ID из URL
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid use case ID format"})
 		return
 	}
-	// 2. Привязываем JSON из тела запроса к нашей DTO структуре.
-	// Gin автоматически выполнит валидацию благодаря тегам `binding`.
-	var input dto.AddImageRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+	// 2. Получаем файл из формы (ключ "file" или "image")
+	// На фронтенде FormData должна иметь поле с этим именем!
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image file is required (key 'file')"})
 		return
 	}
 
-	// 3. Вызываем наш новый сервисный метод.
-	err = h.Service.AddImageToUseCase(uint(id), input.ImageURL)
+	// 3. Вызываем сервис
+	url, err := h.Service.UploadUseCaseImage(c.Request.Context(), uint(id), file)
 	if err != nil {
-		// Используем централизованный обработчик ошибок для отправки
-		// правильного HTTP-статуса (404, 400 и т.д.).
 		h.handleError(c, err)
 		return
 	}
 
-	// 4. Если ошибок нет, отправляем успешный ответ.
-	c.JSON(http.StatusOK, gin.H{"message": "Image added/updated successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Image uploaded successfully",
+		"url":     url,
+	})
 }

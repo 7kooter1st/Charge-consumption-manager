@@ -170,6 +170,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+type MinioConfig struct {
+	Host      string
+	Port      string
+	User      string
+	Pass      string
+	Bucket    string // Добавили бакет
+	PublicUrl string // Добавили публичный адрес
+}
+
 // RedisConfig хранит настройки для Redis.
 type RedisConfig struct {
 	Host     string
@@ -182,14 +191,6 @@ type JWTConfig struct {
 	Secret           string
 	ExpiresIn        time.Duration
 	RefreshExpiresIn time.Duration
-}
-
-// MinioConfig хранит настройки для MinIO.
-type MinioConfig struct {
-	Host string
-	Port string
-	User string
-	Pass string
 }
 
 // Config - главная структура, объединяющая все конфигурации.
