@@ -4,6 +4,7 @@ import (
 	dto "LAB3/internal/app/DTO"
 	"LAB3/internal/app/ds"
 	"errors"
+	"mime/multipart"
 
 	"gorm.io/gorm"
 )
@@ -126,16 +127,20 @@ func (s *Service) UpdateUseCase(useCaseId uint, updateData dto.ChangeUseCase) (d
 	return useCase, nil
 }
 
-func (s *Service) AddImageToUseCase(useCaseId uint, imageUrl string) error {
-	if imageUrl == "" {
+// AddImageToUseCase загружает переданный файл изображения в MinIO и сохраняет ссылку в БД.
+func (s *Service) AddImageToUseCase(useCaseId uint, header *multipart.FileHeader) error {
+	if header == nil || header.Size == 0 {
 		return ErrBadRequest
 	}
 	useCase, err := s.repository.GetUseCase(useCaseId)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNoRecords
+		}
 		return err
 	}
 	if useCase.IsDelete {
 		return ErrUseCaseDeleted
 	}
-	return s.repository.AddImageToUseCase(useCaseId, imageUrl)
+	return s.repository.AddOrReplaceUseCaseImage(useCaseId, header)
 }

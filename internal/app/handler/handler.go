@@ -29,41 +29,45 @@ func NewHandler(s *service.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.Default()
 
-	users := router.Group("/users")
+	// Группа /api для всех методов согласно требованиям задания
+	api := router.Group("/api")
 	{
-		users.GET("/:id", h.getUserData)
-		users.PUT("/:id", h.changeUserData)
-		users.POST("/register", h.registerUser)
-	}
+		users := api.Group("/users")
+		{
+			users.GET("/:id", h.getUserData)
+			users.PUT("/:id", h.changeUserData)
+			users.POST("/register", h.registerUser)
+		}
 
-	usecases := router.Group("/usecases")
-	{
-		usecases.GET("/", h.getUseCases)
-		usecases.GET("/:id", h.getUseCaseByID)
-		usecases.POST("/", h.createUseCase)
-		usecases.PUT("/:id", h.updateUseCase)
-		usecases.DELETE("/:id", h.deleteUseCase)
-		// Маршрут для обновления картинки сценария
-		usecases.PUT("/:id/image", h.addImageToUseCase)
-	}
+		usecases := api.Group("/usecases")
+		{
+			usecases.GET("/", h.getUseCases)
+			usecases.GET("/:id", h.getUseCaseByID)
+			usecases.POST("/", h.createUseCase)
+			usecases.PUT("/:id", h.updateUseCase)
+			usecases.DELETE("/:id", h.deleteUseCase)
+			// Маршрут для обновления картинки сценария
+			usecases.PUT("/:id/image", h.addImageToUseCase)
+		}
 
-	consumptions := router.Group("/consumptions")
-	{
-		// Основные маршруты для заявок
-		consumptions.GET("/", h.getFilteredConsumptions)
-		consumptions.POST("/", h.createNewConsumption)
-		consumptions.GET("/draft", h.getUseCasesInConsumption)
-		consumptions.GET("/:id", h.getOneConsumption)
-		consumptions.DELETE("/:id", h.deleteConsumption)
+		consumptions := api.Group("/consumptions")
+		{
+			// Основные маршруты для заявок
+			consumptions.GET("/", h.getFilteredConsumptions)
+			consumptions.POST("/", h.createNewConsumption)
+			consumptions.GET("/draft", h.getUseCasesInConsumption)
+			consumptions.GET("/:id", h.getOneConsumption)
+			consumptions.DELETE("/:id", h.deleteConsumption)
 
-		// Маршруты для изменения состояния заявки
-		consumptions.PUT("/:id/formate", h.formateConsumption)
-		consumptions.PUT("/:id/moderate", h.moderatorAction)
+			// Маршруты для изменения состояния заявки
+			consumptions.PUT("/:id/formate", h.formateConsumption)
+			consumptions.PUT("/:id/moderate", h.moderatorAction)
 
-		// Маршруты для управления сценариями ВНУТРИ заявки
-		consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
-		consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
-		consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
+			// Маршруты для управления сценариями ВНУТРИ заявки
+			consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
+			consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
+			consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
+		}
 	}
 
 	return router
@@ -82,8 +86,8 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Для всех остальных непредвиденных ошибок
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+	// Для всех остальных ошибок возвращаем текст ошибки (для отладки MinIO и т.д.)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 }
 
 func (h *Handler) errorHandler(ctx *gin.Context, errorStatusCode int, message string) {

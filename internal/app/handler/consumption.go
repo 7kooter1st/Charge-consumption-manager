@@ -2,7 +2,7 @@ package handler
 
 import (
 	dto "LAB3/internal/app/DTO"
-	"errors"
+	"LAB3/internal/app/ds"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,32 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getUserIdFromQuery(c *gin.Context) (uint, error) {
-	// 1. Получаем значение параметра 'user_id' из URL (например, /consumptions?user_id=123)
-	userIdStr := c.Query("user_id")
-
-	// 2. Проверяем, был ли параметр вообще передан. Если нет, возвращаем ошибку.
-	if userIdStr == "" {
-		return 0, errors.New("query parameter 'user_id' is required")
-	}
-
-	// 3. Конвертируем строковое значение в число (uint64).
-	userId, err := strconv.ParseUint(userIdStr, 10, 32)
-	if err != nil {
-		// Если конвертация не удалась (например, передали не число), возвращаем ошибку.
-		return 0, errors.New("invalid 'user_id' format, must be a number")
-	}
-
-	// 4. Возвращаем результат в формате uint и nil в качестве ошибки.
-	return uint(userId), nil
+// getCurrentUserId возвращает ID текущего фиксированного пользователя через singleton
+func getCurrentUserId() uint {
+	return ds.GetUser().GetId()
 }
 
 func (h *Handler) getUseCasesInConsumption(c *gin.Context) {
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	consumptionId, count, err := h.Service.GetUseCasesInConsumption(userId)
 	if err != nil {
@@ -50,11 +31,7 @@ func (h *Handler) getUseCasesInConsumption(c *gin.Context) {
 }
 
 func (h *Handler) getFilteredConsumptions(c *gin.Context) {
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	var filter dto.ConsumptionFilter
 	filter.Status = c.Query("status")
@@ -76,11 +53,7 @@ func (h *Handler) getFilteredConsumptions(c *gin.Context) {
 }
 
 func (h *Handler) createNewConsumption(c *gin.Context) {
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	response, err := h.Service.CreateNewConsumption(userId)
 	if err != nil {
@@ -97,11 +70,7 @@ func (h *Handler) getOneConsumption(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	consumption, err := h.Service.GetOneConsumption(uint(consumptionId), userId)
 	if err != nil {
@@ -118,11 +87,7 @@ func (h *Handler) deleteConsumption(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	if err := h.Service.DeleteConsumption(uint(consumptionId), userId); err != nil {
 		h.handleError(c, err)
@@ -138,11 +103,7 @@ func (h *Handler) formateConsumption(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	response, err := h.Service.FormateConsumption(uint(consumptionId), userId)
 	if err != nil {
@@ -159,11 +120,7 @@ func (h *Handler) addUseCaseToConsumption(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid consumption ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	var payload struct {
 		UseCaseID uint `json:"use_case_id" binding:"required"`
@@ -193,11 +150,7 @@ func (h *Handler) deleteUseCaseFromConsumption(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid use case ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	err = h.Service.DeleteUseCaseFromConsumption(userId, uint(consumptionId), uint(useCaseId))
 	if err != nil {
@@ -219,11 +172,7 @@ func (h *Handler) changeUseCaseDurationInConsumption(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid use case ID format"})
 		return
 	}
-	userId, err := getUserIdFromQuery(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	userId := getCurrentUserId()
 
 	var input dto.ChangeUseCaseDurationRequest
 	if err := c.ShouldBindJSON(&input); err != nil {

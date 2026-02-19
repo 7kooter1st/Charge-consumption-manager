@@ -3,14 +3,9 @@ package service
 import (
 	"LAB3/internal/app/repository"
 	"errors"
-	"log"
-	"net/url"
-	"os"
-	"path"
-	"time"
 
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
+	//"mime/multipart"
+	"time"
 )
 
 var ErrNoRecords = errors.New("записи не найдены")
@@ -19,38 +14,20 @@ var ErrBadRequest = errors.New("введены некорректные данн
 var ErrUseCaseDeleted = errors.New("этот сценарий использования удален")
 
 type Service struct {
-	repository  *repository.Repository
-	minioClient *minio.Client
+	repository *repository.Repository
 }
 
 func NewService(repository *repository.Repository) *Service {
-	minioClient, err := minio.New(os.Getenv("MINIO_HOST")+":"+os.Getenv("MINIO_PORT"), &minio.Options{
-		Creds:  credentials.NewStaticV4("minio", "minio124", ""),
-		Secure: false,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
 	return &Service{
-		repository:  repository,
-		minioClient: minioClient,
+		repository: repository,
 	}
 }
 
-// Вспомогательные функции остаются без изменений
 func formateDate(date time.Time, layout string) string {
 	if date.IsZero() {
 		return ""
 	}
 	return date.Format(layout)
-}
-
-func extractFilenameFromURL(imageURL string) string {
-	parsedUrl, err := url.Parse(imageURL)
-	if err != nil {
-		return ""
-	}
-	return path.Base(parsedUrl.Path)
 }
 
 // ////////////////////
