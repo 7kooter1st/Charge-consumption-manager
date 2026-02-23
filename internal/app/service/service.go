@@ -44,16 +44,15 @@ func (s *Service) AddToBlacklist(ctx context.Context, tokenStr string) error {
 	// Ключ в Redis будет, например, "jwt_blacklist:eyJhbGciOi..."
 	key := jwtBlacklistPrefix + tokenStr
 
-	// Время жизни ключа в Redis (TTL) равно времени, оставшемуся до истечения токена.
-	// Это нужно, чтобы не засорять Redis просроченными токенами.
-	ttl := time.Until(claims.ExpiresAt.Time)
-
-	// Если токен уже истек, нет смысла добавлять его в блэклист.
+	var ttl time.Duration
+	if claims.ExpiresAt != nil {
+		ttl = time.Until(claims.ExpiresAt.Time)
+	}
 	if ttl <= 0 {
-		return nil // Не является ошибкой
+		// Токен истёк или без exp — пишем в blacklist с TTL 24ч
+		ttl = 24 * time.Hour
 	}
 
-	// Добавляем ключ в Redis с указанным временем жизни.
 	return s.redisClient.Set(ctx, key, "revoked", ttl).Err()
 }
 

@@ -1,5 +1,24 @@
+# Основные настройки (корень)
+# Порт 8000 не конфликтует с docker-compose: 8080 swagger-editor, 8081 adminer
 ServiceHost = "127.0.0.1"
 ServicePort = 8000
+
+# Секция для JWT (соответствует полю JWT в структуре Config)
+[JWT]
 Secret = "your_super_secret_key"
-ExpiresIn = "15m"  # <-- Уменьшаем время жизни Access Token до 15 минут
-RefreshExpiresIn = "720h" # <-- Refresh Token живет 30 дней
+ExpiresIn = "15m"
+RefreshExpiresIn = "720h"
+
+# Секция для Minio (соответствует полю Minio в структуре Config)
+[Minio]
+Host = "127.0.0.1"
+Port = "9000"
+User = "minioadmin"
+Pass = "minioadmin"
+Bucket = "usecase-images"
+PublicUrl = "http://127.0.0.1:9000"
+
+# Если вы используете Redis из конфига (хотя в коде он брался из ENV, но для порядка можно добавить)
+[Redis]
+Host = "127.0.0.1"
+Port = 6379

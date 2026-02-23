@@ -1,16 +1,15 @@
 package handler
 
-// Login godoc
-// @Summary      User login
-// @Description  Authenticates a user and returns a JWT token
+// login godoc
+// @Summary      Вход (логин)
+// @Description  Аутентификация по логину и паролю. Возвращает access_token, refresh_token, user_id и role для фронта.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        credentials body dto.UserRegistration true "User credentials"
-// @Success      200  {object} map[string]string
+// @Param        credentials body dto.UserRegistration true "Логин и пароль"
+// @Success      200  {object} dto.LoginResponse
 // @Failure      400  {object} map[string]string
-// @Failure      404  {object} map[string]string
-// @Failure      500  {object} map[string]string
+// @Failure      401  {object} map[string]string "invalid login or password"
 // @Router       /users/login [post]
 
 import (
@@ -29,7 +28,7 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 
-	accessToken, refreshToken, err := h.Service.LoginUser(input)
+	accessToken, refreshToken, userID, role, err := h.Service.LoginUserWithMeta(input)
 	if err != nil {
 		if err == service.ErrNoRecords || err.Error() == "invalid password" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid login or password"})
@@ -39,12 +38,24 @@ func (h *Handler) login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"accesstoken":  accessToken,
-		"refreshtoken": refreshToken,
+	c.JSON(http.StatusOK, dto.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		UserID:      userID,
+		Role:        uint8(role),
 	})
 }
 
+// registerUser godoc
+// @Summary      Регистрация
+// @Description  Создание нового пользователя (роль User по умолчанию).
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        input body dto.UserRegistration true "Логин и пароль"
+// @Success      201  {object} dto.UserDataResposne
+// @Failure      400  {object} map[string]string
+// @Router       /users/register [post]
 func (h *Handler) registerUser(c *gin.Context) {
 	var input dto.UserRegistration
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -99,6 +110,16 @@ func (h *Handler) changeUserData(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// getMe godoc
+// @Summary      Текущий пользователь
+// @Description  Возвращает данные авторизованного пользователя (id, login, role).
+// @Tags         Users
+// @Security     ApiKeyAuth
+// @Produce      json
+// @Success      200  {object} dto.UserDataResposne
+// @Failure      401  {object} map[string]string
+// @Failure      500  {object} map[string]string
+// @Router       /api/users/me [get]
 func (h *Handler) getMe(c *gin.Context) {
 	userIdCtx, ok := c.Get(userCtx)
 	if !ok {

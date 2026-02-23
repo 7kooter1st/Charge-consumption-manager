@@ -44,11 +44,15 @@ INSERT INTO usecase_consumptions (id, consumption_id, use_case_id, duration) VAL
 (10, 5, 3, 6);  
 
 
-SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id)+1 FROM users), 1), false);
+-- После вставки с явными id нужно синхронизировать sequence, иначе новая регистрация даст duplicate key (users_pkey)
+SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM users), false);
 
--- Синхронизируем счетчик для таблицы use_cases
-SELECT setval(pg_get_serial_sequence('use_cases', 'id'), COALESCE((SELECT MAX(id)+1 FROM use_cases), 1), false);
+-- Синхронизируем счётчик для таблицы use_cases
+SELECT setval(pg_get_serial_sequence('use_cases', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM use_cases), false);
 
--- Синхронизируем счетчик для таблицы usecase_consumptions
-SELECT setval(pg_get_serial_sequence('usecase_consumptions', 'id'), COALESCE((SELECT MAX(id)+1 FROM usecase_consumptions), 1), false);
+-- Синхронизируем счётчик для таблицы consumptions
+SELECT setval(pg_get_serial_sequence('consumptions', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM consumptions), false);
+
+-- Синхронизируем счётчик для таблицы usecase_consumptions
+SELECT setval(pg_get_serial_sequence('usecase_consumptions', 'id'), (SELECT COALESCE(MAX(id), 0) + 1 FROM usecase_consumptions), false);
 

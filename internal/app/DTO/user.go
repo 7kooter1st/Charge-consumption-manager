@@ -8,6 +8,15 @@ type UserRegistration struct {
 type UserDataResposne struct {
 	ID    uint   `json:"id"`
 	Login string `json:"login"`
+	Role  uint8  `json:"role"` // 0=User, 1=Moderator — для фронта (интерфейс модератора/клиента)
+}
+
+// LoginResponse — ответ логина для фронта (роль и id для роутинга и Redux).
+type LoginResponse struct {
+	AccessToken  string `json:"accesstoken"`
+	RefreshToken string `json:"refreshtoken"`
+	UserID      uint   `json:"user_id"`
+	Role        uint8  `json:"role"` // 0=User, 1=Moderator
 }
 
 type ChangeUserData struct {

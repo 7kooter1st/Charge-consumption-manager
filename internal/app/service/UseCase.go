@@ -1,38 +1,76 @@
 package service
 
 import (
+	"encoding/json"
+	"time"
+
 	dto "LAB3/internal/app/DTO"
 	"LAB3/internal/app/ds"
 	"context"
 	"errors"
-	"fmt"
 	"mime/multipart"
-	"path/filepath"
 
-	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 )
 
-// GetUseCases возвращает список сценариев использования с фильтрацией по потреблению
-func (s *Service) GetUseCases(startValue uint, endValue uint) ([]ds.UseCase, error) {
+const useCasesCacheKey = "usecases:list"
+const useCasesCacheTTL = 5 * time.Minute
+
+// GetUseCases возвращает список сценариев использования с фильтрацией по потреблению.
+// Список услуг кешируется в Redis (доп. задание).
+func (s *Service) GetUseCases(ctx context.Context, startValue uint, endValue uint) ([]ds.UseCase, error) {
 	if startValue < 0 || endValue < 0 {
 		return nil, ErrBadRequest
 	}
 
-	useCases, err := s.repository.GetUseCases(startValue, endValue)
+	var all []ds.UseCase
+	cached, err := s.redisClient.Get(ctx, useCasesCacheKey).Bytes()
+	if err == nil {
+		if err := json.Unmarshal(cached, &all); err == nil {
+			return filterUseCasesByConsumption(all, startValue, endValue)
+		}
+	}
+	if err != nil && err != redis.Nil {
+		// при ошибке Redis идём в БД без кеша
+	}
+
+	all, err = s.repository.GetAllUseCases()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNoRecords
 		}
 		return nil, err
 	}
+	_ = s.redisClient.Set(ctx, useCasesCacheKey, mustMarshal(all), useCasesCacheTTL).Err()
 
-	if len(useCases) == 0 {
+	return filterUseCasesByConsumption(all, startValue, endValue)
+}
+
+func filterUseCasesByConsumption(list []ds.UseCase, startValue, endValue uint) ([]ds.UseCase, error) {
+	var out []ds.UseCase
+	for _, u := range list {
+		if startValue > 0 && u.Consumption <= startValue {
+			continue
+		}
+		if endValue > 0 && u.Consumption >= endValue {
+			continue
+		}
+		out = append(out, u)
+	}
+	if len(out) == 0 {
 		return nil, ErrNoRecords
 	}
+	return out, nil
+}
 
-	return useCases, nil
+func mustMarshal(v interface{}) []byte {
+	b, _ := json.Marshal(v)
+	return b
+}
+
+func (s *Service) invalidateUseCasesCache(ctx context.Context) {
+	_ = s.redisClient.Del(ctx, useCasesCacheKey).Err()
 }
 
 // GetUseCase возвращает один сценарий использования по ID
@@ -70,7 +108,7 @@ func (s *Service) AddUseCase(newUseCase dto.AddUseCase) (ds.UseCase, error) {
 	if err != nil {
 		return ds.UseCase{}, err
 	}
-
+	s.invalidateUseCasesCache(context.Background())
 	return response, nil
 }
 
@@ -92,7 +130,7 @@ func (s *Service) DeleteUseCase(useCaseId uint) error {
 	if err != nil {
 		return err
 	}
-
+	s.invalidateUseCasesCache(context.Background())
 	return nil
 }
 
@@ -128,7 +166,7 @@ func (s *Service) UpdateUseCase(useCaseId uint, updateData dto.ChangeUseCase) (d
 	if err != nil {
 		return ds.UseCase{}, err
 	}
-
+	s.invalidateUseCasesCache(context.Background())
 	return useCase, nil
 }
 
@@ -146,64 +184,17 @@ func (s *Service) UpdateUseCase(useCaseId uint, updateData dto.ChangeUseCase) (d
 // 	return s.repository.AddImageToUseCase(useCaseId, imageUrl)
 // }
 
+// UploadUseCaseImage принимает файл изображения (multipart), загружает его в MinIO и сохраняет ссылку в БД.
+// Эндпоинт ожидает форму с полем "file" (сама картинка), а не JSON с URL.
 func (s *Service) UploadUseCaseImage(ctx context.Context, useCaseId uint, file *multipart.FileHeader) (string, error) {
-	// 1. Проверяем существование UseCase (можно пропустить, если Repository.AddImageToUseCase это проверяет, но лучше проверить)
 	_, err := s.repository.GetUseCase(useCaseId)
 	if err != nil {
 		return "", err
 	}
-
-	// 2. Подготавливаем файл к загрузке
-	src, err := file.Open()
+	url, err := s.repository.AddOrReplaceUseCaseImage(ctx, useCaseId, file)
 	if err != nil {
 		return "", err
 	}
-	defer src.Close()
-
-	// Генерируем уникальное имя файла, чтобы не перезатереть существующие
-	ext := filepath.Ext(file.Filename)
-	newFilename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-
-	bucketName := s.config.Minio.Bucket
-
-	// 3. Проверяем, существует ли бакет, если нет — создаем
-	exists, err := s.minioClient.BucketExists(ctx, bucketName)
-	if err != nil {
-		return "", fmt.Errorf("minio bucket check failed: %w", err)
-	}
-	if !exists {
-		err = s.minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
-		if err != nil {
-			return "", fmt.Errorf("failed to create bucket: %w", err)
-		}
-		// Устанавливаем политику доступа (чтобы картинки были публичными для чтения)
-		policy := fmt.Sprintf(`{"Version": "2012-10-17","Statement": [{"Action": ["s3:GetObject"],"Effect": "Allow","Principal": {"AWS": ["*"]},"Resource": ["arn:aws:s3:::%s/*"],"Sid": ""}]}`, bucketName)
-		_ = s.minioClient.SetBucketPolicy(ctx, bucketName, policy)
-	}
-
-	// 4. Загружаем файл
-	// Content-Type берем из заголовка файла или ставим "application/octet-stream"
-	contentType := file.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	_, err = s.minioClient.PutObject(ctx, bucketName, newFilename, src, file.Size, minio.PutObjectOptions{
-		ContentType: contentType,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to upload to minio: %w", err)
-	}
-
-	// 5. Формируем публичную ссылку
-	// http://localhost:9000/bucket-name/filename.ext
-	imageURL := fmt.Sprintf("%s/%s/%s", s.config.Minio.PublicUrl, bucketName, newFilename)
-
-	// 6. Сохраняем ссылку в БД
-	err = s.repository.AddImageToUseCase(useCaseId, imageURL)
-	if err != nil {
-		return "", err
-	}
-
-	return imageURL, nil
+	s.invalidateUseCasesCache(ctx)
+	return url, nil
 }

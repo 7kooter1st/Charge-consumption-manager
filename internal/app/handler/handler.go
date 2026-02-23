@@ -1,16 +1,25 @@
 package handler
 
 import (
-	dto "LAB3/internal/app/DTO"
-	"LAB3/internal/app/role"
-	"LAB3/internal/app/service"
+	_ "embed"
 	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	dto "LAB3/internal/app/DTO"
+	"LAB3/internal/app/role"
+	"LAB3/internal/app/service"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed openapi.json
+var openAPISpec []byte
+
+//go:embed swagger.html
+var swaggerHTML []byte
 
 type Handler struct {
 	Service *service.Service
@@ -29,6 +38,17 @@ func NewHandler(s *service.Service) *Handler {
 	}
 }
 
+// refreshToken godoc
+// @Summary      Обновление токенов
+// @Description  По refresh_token выдаёт новую пару access_token и refresh_token.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        input body dto.RefreshRequest true "refresh_token"
+// @Success      200  {object} dto.TokenResponse
+// @Failure      400  {object} map[string]string
+// @Failure      401  {object} map[string]string
+// @Router       /users/refresh [post]
 func (h *Handler) refreshToken(c *gin.Context) {
 	var input dto.RefreshRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -75,81 +95,22 @@ func (h *Handler) logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
 }
 
-// func (h *Handler) InitRoutes() *gin.Engine {
-// 	router := gin.Default()
-
-// 	router.Use(func(c *gin.Context) {
-// 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // В проде лучше указать конкретный домен фронта
-// 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-// 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-// 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-// 		if c.Request.Method == "OPTIONS" {
-// 			c.AbortWithStatus(204)
-// 			return
-// 		}
-// 		c.Next()
-// 	})
-
-// 	router.POST("/users/register", h.registerUser)
-// 	router.POST("/users/login", h.login)
-
-// 	api := router.Group("/api", h.userIdentity)
-// 	{
-// 		api.GET("/users/me", h.getMe) // Нужно будет создать обработчик getMe
-// 		consumptions := api.Group("/consumptions")
-// 		{
-// 			consumptions.GET("/", h.getFilteredConsumptions)
-// 			consumptions.POST("/", h.createNewConsumption)
-// 			consumptions.GET("/draft", h.getUseCasesInConsumption)
-// 			consumptions.GET("/:id", h.getOneConsumption)
-// 			consumptions.DELETE("/:id", h.deleteConsumption)
-// 			consumptions.PUT("/:id/formate", h.formateConsumption)
-
-// 			// Управление сценариями внутри заявки
-// 			consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
-// 			consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
-// 			consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
-// 		}
-
-// 		// Чтение сценариев доступно всем залогиненным пользователям
-// 		api.GET("/usecases", h.getUseCases)
-// 		api.GET("/usecases/:id", h.getUseCaseByID)
-// 		// api.GET("/me", h.getMe)
-// 		moderator := api.Group("/", h.requireRole(role.Moderator))
-// 		{
-// 			// Модератор может модерировать заявки
-// 			moderator.PUT("/consumptions/:id/moderate", h.moderatorAction)
-
-// 			// Модератор может управлять сценариями (создавать, изменять, удалять)
-// 			usecases := moderator.Group("/usecases")
-// 			{
-// 				usecases.POST("/", h.createUseCase)
-// 				usecases.PUT("/:id", h.updateUseCase)
-// 				usecases.DELETE("/:id", h.deleteUseCase)
-// 				usecases.PUT("/:id/image", h.addImageToUseCase)
-// 			}
-// 		}
-// 	}
-// 	return router
-// }
-
 func (h *Handler) InitRoutes(router *gin.Engine) {
 
-	// Настройка CORS (ОЧЕНЬ ВАЖНО ДЛЯ ФРОНТЕНДА)
-	// Добавь middleware для CORS, если его еще нет, иначе фронт не сможет слать запросы
-	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // В проде лучше указать конкретный домен фронта
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+	config := cors.DefaultConfig()
+	// Разрешаем запросы с любых доменов (для разработки удобно, на проде лучше указать конкретный)
+	config.AllowAllOrigins = true
+	// Разрешаем методы
+	config.AllowMethods = []string{"POST", "GET", "PUT", "OPTIONS", "DELETE"}
+	// Разрешаем заголовки (важно добавить Authorization для токенов)
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"}
+	// Разрешаем фронтенду видеть определенные заголовки ответа
+	config.ExposeHeaders = []string{"Content-Length"}
+	// Разрешаем передачу куки/креденшелов (если нужно)
+	config.AllowCredentials = true
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+	// Применяем middleware
+	router.Use(cors.New(config))
 
 	// --- ПУБЛИЧНАЯ ЗОНА (Доступна без токена) ---
 
@@ -158,15 +119,20 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 	router.POST("/users/login", h.login)
 	router.POST("/users/refresh", h.refreshToken) // Если реализовано
 
-	// Usecases (Чтение доступно всем!)
-	publicUseCases := router.Group("/usecases")
+	// Usecases (чтение доступно всем)
+	publicUseCases := router.Group("/useCases")
 	{
-		publicUseCases.GET("/", h.getUseCases)       // Получить список
-		publicUseCases.GET("/:id", h.getUseCaseByID) // Получить подробности
+		publicUseCases.GET("/", h.getUseCases)
+		publicUseCases.GET("/:id", h.getUseCaseByID)
 	}
+	// Те же эндпоинты под /api/usecases/ — без авторизации
+	router.GET("/api/usecases/", h.getUseCases)
+	router.GET("/api/usecases/:id", h.getUseCaseByID)
 
-	// Swagger (если подключен)
-	// router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Спецификация OpenAPI и Swagger UI
+	router.GET("/swagger/doc.json", h.serveOpenAPISpec)
+	router.GET("/swagger/index.html", h.serveSwaggerUI)
+	router.GET("/swagger/", h.serveSwaggerUI)
 
 	// --- ЗАЩИЩЕННАЯ ЗОНА (Требуется логин) ---
 	api := router.Group("/api", h.userIdentity)
@@ -182,6 +148,15 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 			// ... твои маршруты заявок ...
 			consumptions.GET("/", h.getFilteredConsumptions)
 			consumptions.POST("/", h.createNewConsumption)
+			consumptions.GET("/draft", h.getUseCasesInConsumption)
+			consumptions.GET("/:id", h.getOneConsumption)
+			consumptions.DELETE("/:id", h.deleteConsumption)
+			consumptions.PUT("/:id/formate", h.formateConsumption)
+
+			// Управление сценариями внутри заявки
+			consumptions.POST("/:id/usecases", h.addUseCaseToConsumption)
+			consumptions.PUT("/:id/usecases/:usecase_id", h.changeUseCaseDurationInConsumption)
+			consumptions.DELETE("/:id/usecases/:usecase_id", h.deleteUseCaseFromConsumption)
 			// и так далее
 		}
 
@@ -202,6 +177,16 @@ func (h *Handler) InitRoutes(router *gin.Engine) {
 			moderator.PUT("/consumptions/:id/moderate", h.moderatorAction)
 		}
 	}
+}
+
+func (h *Handler) serveOpenAPISpec(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	c.Data(http.StatusOK, "application/json", openAPISpec)
+}
+
+func (h *Handler) serveSwaggerUI(c *gin.Context) {
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Data(http.StatusOK, "text/html; charset=utf-8", swaggerHTML)
 }
 
 func (h *Handler) handleError(c *gin.Context, err error) {

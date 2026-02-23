@@ -165,6 +165,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus" // Используем Logrus, как у вас
 	"github.com/spf13/viper"
@@ -193,11 +194,10 @@ type JWTConfig struct {
 	RefreshExpiresIn time.Duration
 }
 
-// Config - главная структура, объединяющая все конфигурации.
 type Config struct {
 	ServiceHost string
 	ServicePort int
-	JWT         JWTConfig
+	JWT         JWTConfig // Теги убираем, Viper сам найдет по имени
 	Redis       RedisConfig
 	Minio       MinioConfig
 }
@@ -217,12 +217,26 @@ func NewConfig() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+
+	// ВАЖНО: Используем DecodeHook для парсинга времени (15m -> duration)
+	err := viper.Unmarshal(&cfg, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
+
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Читаем чувствительные данные из переменных окружения (.env или ОС)
-	cfg.Redis.Host = os.Getenv("REDIS_HOST")
+	// Читаем настройки Redis из переменных окружения (.env или ОС)
+	if v := os.Getenv("REDIS_HOST"); v != "" {
+		cfg.Redis.Host = v
+	}
+	if cfg.Redis.Host == "" {
+		cfg.Redis.Host = "127.0.0.1"
+	}
 	redisPortStr := os.Getenv("REDIS_PORT")
 	if redisPortStr != "" {
 		port, err := strconv.Atoi(redisPortStr)
@@ -231,12 +245,34 @@ func NewConfig() (*Config, error) {
 		}
 		cfg.Redis.Port = port
 	}
-	cfg.Redis.Password = os.Getenv("REDIS_PASSWORD")
+	if cfg.Redis.Port == 0 {
+		cfg.Redis.Port = 6379
+	}
+	if v := os.Getenv("REDIS_PASSWORD"); v != "" {
+		cfg.Redis.Password = v
+	}
 
-	cfg.Minio.Host = os.Getenv("MINIO_HOST")
-	cfg.Minio.Port = os.Getenv("MINIO_PORT")
-	cfg.Minio.User = os.Getenv("MINIO_USER")
-	cfg.Minio.Pass = os.Getenv("MINIO_PASS")
+	if v := os.Getenv("MINIO_HOST"); v != "" {
+		cfg.Minio.Host = v
+	}
+	if v := os.Getenv("MINIO_PORT"); v != "" {
+		cfg.Minio.Port = v
+	}
+	if v := os.Getenv("MINIO_USER"); v != "" {
+		cfg.Minio.User = v
+	}
+	if v := os.Getenv("MINIO_PASS"); v != "" {
+		cfg.Minio.Pass = v
+	}
+
+	if v := os.Getenv("SERVICE_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			cfg.ServicePort = port
+		}
+	}
+	if v := os.Getenv("SERVICE_HOST"); v != "" {
+		cfg.ServiceHost = v
+	}
 
 	log.Info("Config parsed successfully")
 	log.Infof("Service will run on: %s:%d", cfg.ServiceHost, cfg.ServicePort)

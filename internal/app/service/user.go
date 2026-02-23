@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetUserData возвращает информацию о пользователе
+// GetUserData возвращает информацию о пользователе (включая роль для фронта)
 func (s *Service) GetUserData(userId uint) (dto.UserDataResposne, error) {
 	user, err := s.repository.GetUser(userId)
 	if err != nil {
@@ -26,6 +26,7 @@ func (s *Service) GetUserData(userId uint) (dto.UserDataResposne, error) {
 	return dto.UserDataResposne{
 		ID:    user.ID,
 		Login: user.Login,
+		Role:  uint8(user.Role),
 	}, nil
 }
 
@@ -82,16 +83,26 @@ func (s *Service) AddNewUser(user dto.UserRegistration) (dto.UserDataResposne, e
 
 // LoginUser аутентифицирует пользователя и возвращает JWT токен
 func (s *Service) LoginUser(creds dto.UserRegistration) (string, string, error) {
+	access, refresh, _, _, err := s.LoginUserWithMeta(creds)
+	return access, refresh, err
+}
+
+// LoginUserWithMeta то же, что LoginUser, плюс userID и role для фронта (интерфейс модератора/клиента, Redux).
+func (s *Service) LoginUserWithMeta(creds dto.UserRegistration) (accessToken, refreshToken string, userID uint, userRole role.Role, err error) {
 	user, err := s.repository.GetUserByLogin(creds.Login)
 	if err != nil {
-		return "", "", ErrNoRecords
+		return "", "", 0, 0, ErrNoRecords
 	}
 
 	if !checkPasswordHash(creds.Password, user.Password) {
-		return "", "", errors.New("invalid password")
+		return "", "", 0, 0, errors.New("invalid password")
 	}
 
-	return s.generateTokenPair(user.ID, user.Role)
+	accessToken, refreshToken, err = s.generateTokenPair(user.ID, user.Role)
+	if err != nil {
+		return "", "", 0, 0, err
+	}
+	return accessToken, refreshToken, user.ID, user.Role, nil
 }
 
 // RefreshTokens - валидирует refresh токен и выдает новую пару

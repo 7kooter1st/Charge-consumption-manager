@@ -17,9 +17,9 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// @title BITOP
+// @title Charge Consumption Manager API
 // @version 1.0
-// @description Bmstu Open IT Platform
+// @description API сервера управления заявками на потребление электроэнергии. ЛР4: JWT, роли, Redis, Swagger.
 
 // @contact.name API Support
 // @contact.url https://vk.com/bmstu_schedule
@@ -27,24 +27,14 @@ import (
 
 // @license.name AS IS (NO WARRANTY)
 
-// @host 127.0.0.1
-// @schemes https http
+// @host 127.0.0.1:8000
 // @BasePath /
+// @schemes http https
 
-// @contact.name API Support
-// @contact.url ...
-// @contact.email ...
-
-// @license.name AS IS (NO WARRANTY)
-
-// @host localhost:8000
-// @BasePath /
-
-// --- ДОБАВЬТЕ ЭТО ОПИСАНИЕ БЕЗОПАСНОСТИ ---
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-// @description Введите "Bearer" пробел и затем ваш токен. Пример: "Bearer eyJhbGciOiJI..."
+// @description JWT: укажите "Bearer" и через пробел ваш access_token. Пример: Bearer eyJhbGciOiJI...
 
 // func main() {
 // 	// 1. Инициализация конфигурации
@@ -90,18 +80,13 @@ func main() {
 		log.Fatalf("FATAL: error loading config: %v", err)
 	}
 
+	log.Printf("DEBUG JWT VALUES: Access=[%v], Refresh=[%v]", cfg.JWT.ExpiresIn, cfg.JWT.RefreshExpiresIn)
 	// 2. Инициализация подключения к БД
 	// DSN теперь тоже можно собирать из cfg, но ваш способ тоже рабочий
 	dbDSN := dsn.FromEnv() // Эта функция читает DB_* из .env
 	if dbDSN == "" {
 		log.Fatal("FATAL: Database DSN is not configured.")
 	}
-	repo, err := repository.New(dbDSN)
-	if err != nil {
-		log.Fatalf("FATAL: error initializing repository: %v", err)
-	}
-
-	// 3. Инициализация ВНЕШНИХ КЛИЕНТОВ (MinIO, Redis)
 	minioClient, err := minio.New(cfg.Minio.Host+":"+cfg.Minio.Port, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.Minio.User, cfg.Minio.Pass, ""),
 		Secure: false,
@@ -109,7 +94,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("FATAL: error initializing minio client: %v", err)
 	}
+	repo, err := repository.New(&repository.RepositorySettings{
+		PostgresDSN:     dbDSN,
+		MinioClient:     minioClient,
+		MinioBucketName: cfg.Minio.Bucket,
+		MinioPublicUrl:  cfg.Minio.PublicUrl,
+	})
+	if err != nil {
+		log.Fatalf("FATAL: error initializing repository: %v", err)
+	}
 
+	// 3. Инициализация Redis (MinIO уже передан в Repository)
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port),
 		Password: cfg.Redis.Password,

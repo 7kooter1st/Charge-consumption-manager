@@ -1,0 +1,82 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Charge Consumption Manager API",
+    "version": "1.0",
+    "description": "API управления заявками на потребление электроэнергии"
+  },
+  "host": "127.0.0.1:8000",
+  "basePath": "/",
+  "schemes": ["http"],
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "Authorization",
+      "description": "JWT: Bearer <access_token>"
+    }
+  },
+  "paths": {
+    "/users/login": {
+      "post": {
+        "summary": "Вход",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["login", "password"],
+              "properties": {
+                "login": { "type": "string" },
+                "password": { "type": "string" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Успех" },
+          "401": { "description": "Неверный логин или пароль" }
+        }
+      }
+    },
+    "/users/register": {
+      "post": {
+        "summary": "Регистрация",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["login", "password"],
+              "properties": {
+                "login": { "type": "string" },
+                "password": { "type": "string" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Создан" },
+          "400": { "description": "Ошибка запроса" }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "summary": "Текущий пользователь",
+        "tags": ["Users"],
+        "security": [{ "ApiKeyAuth": [] }],
+        "responses": {
+          "200": { "description": "Успех" },
+          "401": { "description": "Не авторизован" }
+        }
+      }
+    }
+  }
+}

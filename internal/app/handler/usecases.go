@@ -27,7 +27,7 @@ func (h *Handler) getUseCases(c *gin.Context) {
 	startValue, _ := strconv.ParseUint(c.Query("start_value"), 10, 32)
 	endValue, _ := strconv.ParseUint(c.Query("end_value"), 10, 32)
 
-	useCases, err := h.Service.GetUseCases(uint(startValue), uint(endValue))
+	useCases, err := h.Service.GetUseCases(c.Request.Context(), uint(startValue), uint(endValue))
 	if err != nil {
 		h.handleError(c, err)
 		return
